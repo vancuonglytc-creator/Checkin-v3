@@ -3,16 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HỆ THỐNG ĐIỂM DANH TRUNG TÂM PHÁT TRIỂN KHOA HỌC VÀ CÔNG NGHỆ TRẺ</title>
+  <title>Hệ Thống Check-in Thí Sinh Đa Năng</title>
+  <!-- Thư viện quét đa định dạng (Barcode 1D & QR Code) -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- Thư viện đọc CSV Google Sheets -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
     :root {
       --primary: #2563eb;
-      --bg: #f8fafc;
+      --primary-hover: #1d4ed8;
+      --bg: #f1f5f9;
       --card-bg: #ffffff;
       --text: #0f172a;
-      --border: #e2e8f0;
+      --text-muted: #64748b;
+      --border: #cbd5e1;
       --success: #16a34a;
       --error: #dc2626;
       --warning: #d97706;
@@ -31,16 +35,16 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 16px;
+      padding: 14px;
       min-height: 100vh;
     }
 
     .container {
       width: 100%;
-      max-width: 500px;
+      max-width: 520px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
     }
 
     header {
@@ -56,61 +60,60 @@
 
     .sync-status {
       font-size: 0.85rem;
-      color: #64748b;
+      color: var(--text-muted);
       margin-top: 4px;
     }
 
-    /* Khung nhập súng quét USB / Gõ tay */
-    .scanner-gun-box {
+    /* Khung nhập tay & súng bắn mã vạch */
+    .manual-gun-box {
       background: var(--card-bg);
-      padding: 12px 14px;
+      padding: 12px;
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
       border: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       gap: 8px;
     }
 
-    .gun-hint {
+    .box-title {
       font-size: 0.8rem;
-      font-weight: 600;
-      color: #475569;
+      font-weight: 700;
+      color: #334155;
       display: flex;
-      align-items: center;
       justify-content: space-between;
+      align-items: center;
     }
 
-    .gun-hint span {
+    .badge-guide {
       background: #e2e8f0;
+      color: #334155;
+      font-size: 0.72rem;
       padding: 2px 6px;
       border-radius: 4px;
-      font-size: 0.75rem;
     }
 
-    .gun-input-group {
+    .input-row {
       display: flex;
       gap: 8px;
     }
 
-    .gun-input-group input {
+    .input-row input {
       flex: 1;
       padding: 10px 12px;
-      border: 2px solid #cbd5e1;
+      border: 2px solid var(--border);
       border-radius: 8px;
-      font-size: 0.95rem;
+      font-size: 1rem;
       font-weight: 600;
-      letter-spacing: 0.5px;
       outline: none;
       transition: border-color 0.2s;
     }
 
-    .gun-input-group input:focus {
+    .input-row input:focus {
       border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
     }
 
-    .gun-input-group button {
+    .btn-submit {
       background: var(--primary);
       color: #fff;
       border: none;
@@ -118,8 +121,14 @@
       padding: 0 16px;
       font-weight: 600;
       cursor: pointer;
+      font-size: 0.95rem;
     }
 
+    .btn-submit:hover {
+      background: var(--primary-hover);
+    }
+
+    /* Khung camera */
     .scanner-box {
       background: var(--card-bg);
       border-radius: 14px;
@@ -155,10 +164,11 @@
 
     button:disabled { opacity: 0.5; cursor: not-allowed; }
 
+    /* Thẻ thông tin kết quả */
     .result-card {
       background: var(--card-bg);
       border-radius: 14px;
-      padding: 18px;
+      padding: 16px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       display: none;
       border-left: 5px solid var(--success);
@@ -166,16 +176,16 @@
 
     .result-card.active {
       display: block;
-      animation: fadeIn 0.3s ease;
+      animation: fadeIn 0.25s ease;
     }
 
     .result-card.not-found { border-left-color: var(--error); }
     .result-card.already-checked { border-left-color: var(--warning); }
 
     .result-title {
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 700;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       color: var(--success);
       display: flex;
       align-items: center;
@@ -190,11 +200,11 @@
       justify-content: space-between;
       align-items: center;
       padding: 7px 0;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid #f1f5f9;
     }
 
     .data-row:last-child { border-bottom: none; }
-    .data-label { color: #64748b; font-size: 0.9rem; }
+    .data-label { color: var(--text-muted); font-size: 0.88rem; }
     .data-val { font-weight: 600; font-size: 0.95rem; text-align: right; }
 
     .badge-status {
@@ -215,7 +225,7 @@
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
+      from { opacity: 0; transform: translateY(5px); }
       to { opacity: 1; transform: translateY(0); }
     }
   </style>
@@ -224,23 +234,29 @@
 
   <div class="container">
     <header>
-      <h1>HỆ THỐNG ĐIỂM DANH TRUNG TÂM PHÁT TRIỂN KHOA HỌC VÀ CÔNG NGHỆ TRẺ</h1>
+      <h1>Check-in Thí Sinh</h1>
       <p class="sync-status" id="dbStatus">Đang tải danh sách thí sinh...</p>
     </header>
 
-    <!-- Khu vực dành cho Súng quét Barcode USB / Gõ tay -->
-    <div class="scanner-gun-box">
-      <div class="gun-hint">
-        <span>🔫 Súng quét Barcode USB / Gõ tay</span>
-        <small style="color: #64748b;">(Cắm súng là bắn được ngay)</small>
+    <!-- 1. KHU VỰC NHẬP TAY HOẶC DÙNG SÚNG BẮN BARCODE/QR USB -->
+    <div class="manual-gun-box">
+      <div class="box-title">
+        <span>⌨️ Nhập mã tay / 🔫 Súng quét USB</span>
+        <span class="badge-guide">Tự động nhận diện</span>
       </div>
-      <form class="gun-input-group" onsubmit="handleManualSubmit(event)">
-        <input type="text" id="barcodeInput" placeholder="Bắn súng mã vạch hoặc nhập mã số..." autocomplete="off" autofocus />
-        <button type="submit">Kiểm tra</button>
+      <form class="input-row" onsubmit="handleManualSubmit(event)">
+        <input 
+          type="text" 
+          id="manualCodeInput" 
+          placeholder="Nhập mã số hoặc bấm súng quét..." 
+          autocomplete="off" 
+          autofocus 
+        />
+        <button type="submit" class="btn-submit">Kiểm tra</button>
       </form>
     </div>
 
-    <!-- Khu vực Camera / Webcam -->
+    <!-- 2. KHU VỰC CAMERA ĐIỆN THOẠI / WEBCAM LAPTOP (QUÉT CẢ BARCODE & QR) -->
     <div class="scanner-box">
       <div id="reader"></div>
     </div>
@@ -251,7 +267,7 @@
       <button class="btn-ctrl btn-reload" onclick="loadDataFromSheets()">Làm mới Sheet</button>
     </div>
 
-    <!-- Khối hiển thị thông tin thí sinh -->
+    <!-- KHỐI KẾT QUẢ CHECK-IN -->
     <div id="resultCard" class="result-card">
       <div class="result-title" id="resHeader">
         <span>✓</span> Check-in thành công
@@ -287,6 +303,7 @@
   </div>
 
   <script>
+    // ---------------- CẤU HÌNH LIÊN KẾT GOOGLE SHEETS & APPS SCRIPT ----------------
     const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4sLZHFDwhiBdhJbQUkIAbNYSsWkx-zxMg6vc4QAMgJu4qW4tsi6vS4PbFys_0Kra681QuCOAQ-RR1/pub?output=csv";
     const CHECKIN_API_URL = "https://script.google.com/macros/s/AKfycbwyysUeK3wwmAqsiYKZQkE_PquC_NQBSvvjarmef_SJVgip5OYuLdAM3lMst2v9HpB5/exec";
 
@@ -294,9 +311,9 @@
     let html5QrCode = null;
     let isScanning = false;
     let isStarting = false;
-    let lastScannedCode = null;
+    let lastProcessedCode = null;
 
-    // Tải dữ liệu danh sách ban đầu từ Google Sheets
+    // 1. TẢI DANH SÁCH DỮ LIỆU TỪ GOOGLE SHEETS
     async function loadDataFromSheets() {
       const statusEl = document.getElementById("dbStatus");
       if (!SHEET_CSV_URL.trim()) {
@@ -304,7 +321,7 @@
         return;
       }
 
-      statusEl.textContent = "Đang đồng bộ danh sách...";
+      statusEl.textContent = "Đang đồng bộ danh sách thí sinh...";
       const urlWithBuster = SHEET_CSV_URL + (SHEET_CSV_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
 
       Papa.parse(urlWithBuster, {
@@ -334,10 +351,10 @@
       });
     }
 
-    // Gửi yêu cầu cập nhật "Đã checkin" lên Google Sheet
+    // 2. GỬI YÊU CẦU CẬP NHẬT TRẠNG THÁI LÊN GOOGLE SHEETS
     async function sendCheckinToGoogleSheet(id) {
       const statusSpan = document.getElementById("resStatus");
-      statusSpan.innerHTML = `<span style="color:#64748b;">Đang lưu vào Sheet...</span>`;
+      statusSpan.innerHTML = `<span style="color:#64748b;">Đang ghi nhận...</span>`;
 
       if (!CHECKIN_API_URL.trim()) {
         statusSpan.innerHTML = `<span style="color:red;'>Chưa cấu hình API URL!</span>`;
@@ -356,18 +373,33 @@
         const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         statusSpan.innerHTML = `<span class="badge-status">Đã ghi nhận (${timeStr})</span>`;
       } catch (err) {
-        statusSpan.innerHTML = `<span style="color:red;'>Lỗi kết nối khi cập nhật!</span>`;
+        statusSpan.innerHTML = `<span style="color:red;'>Lỗi cập nhật Sheet!</span>`;
       }
     }
 
-    // Hàm xử lý chung khi nhận được mã số (từ Camera, Súng quét hay Nhập tay)
+    // 3. XỬ LÝ MÃ CHUNG (CHO CẢ CAMERA, SÚNG QUÉT VÀ NHẬP TAY)
     function processCandidateCode(rawCode) {
-      const code = rawCode.trim();
+      let code = rawCode.trim();
       if (!code) return;
 
-      if (code === lastScannedCode) return;
-      lastScannedCode = code;
-      setTimeout(() => { lastScannedCode = null; }, 1500);
+      // Xử lý nếu mã quét được là dạng chuỗi JSON hoặc chứa dấu gạch đứng (|)
+      if (code.startsWith("{") && code.endsWith("}")) {
+        try {
+          const parsed = JSON.parse(code);
+          code = parsed.id || parsed.code || parsed.maso || code;
+        } catch (e) {}
+      } else if (code.includes("|")) {
+        const parts = code.split("|").map(s => s.trim());
+        if (parts.length >= 2) {
+          // Nếu dạng: Họ tên | Mã số | ... thì lấy phần mã số
+          code = parts[1];
+        }
+      }
+
+      // Tránh xử lý liên tục cùng 1 mã trong 1.5 giây
+      if (code === lastProcessedCode) return;
+      lastProcessedCode = code;
+      setTimeout(() => { lastProcessedCode = null; }, 1500);
 
       if (navigator.vibrate) navigator.vibrate(100);
 
@@ -375,7 +407,7 @@
       const header = document.getElementById("resHeader");
       const rawEl = document.getElementById("resRaw");
 
-      rawEl.textContent = `Mã quét/nhập: ${code}`;
+      rawEl.textContent = `Nội dung nhận diện: ${code}`;
       card.className = "result-card active";
 
       const found = candidateMap.get(code.toLowerCase());
@@ -388,7 +420,6 @@
         document.getElementById("resField").textContent = found.field;
         document.getElementById("dataFields").style.display = "block";
 
-        // Gửi lệnh cập nhật lên Google Sheets
         sendCheckinToGoogleSheet(found.id);
       } else {
         card.className = "result-card active not-found";
@@ -401,35 +432,32 @@
       }
     }
 
-    // Xử lý khi quét từ Camera
-    function onScanSuccess(decodedText) {
-      processCandidateCode(decodedText);
-    }
-
-    // Xử lý khi nhấn nút hoặc bấm Enter từ ô nhập tay
+    // 4. XỬ LÝ KHI NHẬP TAY
     function handleManualSubmit(e) {
       e.preventDefault();
-      const input = document.getElementById("barcodeInput");
+      const input = document.getElementById("manualCodeInput");
       processCandidateCode(input.value);
       input.value = "";
       input.focus();
     }
 
-    // Lắng nghe súng bắn Barcode toàn trang (bắn khi chưa focus vào ô input vẫn nhận)
+    // 5. TỰ ĐỘNG BẮT TÍN HIỆU TỪ SÚNG QUÉT MÃ VẠCH / QR USB (CẮM MÁY TÍNH LÀ BẮN ĐƯỢC)
     let barcodeBuffer = "";
     let lastKeyTime = Date.now();
 
     window.addEventListener("keydown", (e) => {
-      if (document.activeElement === document.getElementById("barcodeInput")) return;
+      // Nếu đang chủ động gõ trong ô nhập tay thì để form tự nhận
+      if (document.activeElement === document.getElementById("manualCodeInput")) return;
 
       const currentTime = Date.now();
-      if (currentTime - lastKeyTime > 100) {
+      // Súng quét gõ cực nhanh (dưới 60ms giữa mỗi phím)
+      if (currentTime - lastKeyTime > 80) {
         barcodeBuffer = "";
       }
       lastKeyTime = currentTime;
 
       if (e.key === "Enter") {
-        if (barcodeBuffer.length > 2) {
+        if (barcodeBuffer.length >= 2) {
           processCandidateCode(barcodeBuffer);
           barcodeBuffer = "";
         }
@@ -438,7 +466,7 @@
       }
     });
 
-    // Mở Camera / Webcam an toàn
+    // 6. KHỞI ĐỘNG CAMERA/WEBCAM HỖ TRỢ CẢ MÃ VẠCH (1D) VÀ QR CODE (2D)
     async function startScanner() {
       if (isScanning || isStarting) return;
 
@@ -450,34 +478,67 @@
 
       try {
         if (!html5QrCode) {
-          html5QrCode = new Html5Qrcode("reader");
+          // Khai báo đầy đủ các định dạng: QR code và các loại Barcode sọc phổ biến
+          const formatsToSupport = [
+            Html5QrcodeSupportedFormats.QR_CODE,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.ITF
+          ];
+
+          html5QrCode = new Html5Qrcode("reader", { 
+            formatsToSupport: formatsToSupport,
+            verbose: false 
+          });
         }
 
+        // Khung quét ngang tối ưu để bắt trọn chiều dài của mã vạch và QR code
+        const qrBoxFunction = function(viewfinderWidth, viewfinderHeight) {
+          const width = Math.floor(viewfinderWidth * 0.85);
+          const height = Math.floor(viewfinderHeight * 0.50);
+          return { width: width, height: height };
+        };
+
         const config = { 
-          fps: 15, 
-          qrbox: { width: 280, height: 160 }, 
-          aspectRatio: 1.333334 
+          fps: 20, 
+          qrbox: qrBoxFunction
         };
 
         const devices = await Html5Qrcode.getCameras();
         
         if (devices && devices.length > 0) {
+          // Ưu tiên camera sau (trên điện thoại), nếu là Laptop sẽ dùng Webcam có sẵn
           let selectedCameraId = devices[0].id;
           const backCamera = devices.find(d => 
             d.label.toLowerCase().includes('back') || 
             d.label.toLowerCase().includes('rear') || 
-            d.label.toLowerCase().includes('sau')
+            d.label.toLowerCase().includes('sau') ||
+            d.label.toLowerCase().includes('environment')
           );
           if (backCamera) {
             selectedCameraId = backCamera.id;
           }
 
-          await html5QrCode.start(selectedCameraId, config, onScanSuccess);
+          const videoConstraints = {
+            deviceId: selectedCameraId,
+            width: { min: 640, ideal: 1280, max: 1920 },
+            height: { min: 480, ideal: 720, max: 1080 }
+          };
+
+          await html5QrCode.start(
+            videoConstraints, 
+            config, 
+            (decodedText) => processCandidateCode(decodedText)
+          );
           
           isScanning = true;
           btnStop.disabled = false;
         } else {
-          alert("Không tìm thấy Camera hoặc Webcam nào trên thiết bị!");
+          alert("Không tìm thấy Camera hoặc Webcam trên thiết bị!");
           btnStart.disabled = false;
         }
       } catch (err) {
@@ -490,7 +551,7 @@
       }
     }
 
-    // Tắt Camera
+    // 7. TẮT CAMERA
     async function stopScanner() {
       if (html5QrCode && isScanning) {
         try {
@@ -504,9 +565,10 @@
       }
     }
 
+    // Tự động tải dữ liệu khi vừa mở trang
     window.addEventListener("DOMContentLoaded", () => {
       loadDataFromSheets();
-      document.getElementById("barcodeInput").focus();
+      document.getElementById("manualCodeInput").focus();
     });
   </script>
 </body>
