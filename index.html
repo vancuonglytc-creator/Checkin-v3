@@ -294,11 +294,11 @@
           <span class="data-val" id="resName">--</span>
         </div>
         <div class="data-row">
-          <span class="data-label">Phòng thi</span>
+          <span class="data-label">Đội thi</span>
           <span class="data-val" id="resRoom">--</span>
         </div>
         <div class="data-row">
-          <span class="data-label">Lĩnh vực thi</span>
+          <span class="data-label">Bảng thi</span>
           <span class="data-val" id="resField">--</span>
         </div>
         <div class="data-row">
@@ -350,8 +350,8 @@
               candidateMap.set(id.toLowerCase(), {
                 id: id,
                 name: row['Họ và tên'] || row['HoTen'] || 'Chưa cập nhật',
-                room: row['Phòng thi'] || row['PhongThi'] || 'Chưa xếp phòng',
-                field: row['Lĩnh vực thi'] || row['LinhVuc'] || 'Chưa xếp lĩnh vực',
+                room: row['Đội thi'] || row['PhongThi'] || 'Chưa xếp phòng',
+                field: row['Bảng thi'] || row['LinhVuc'] || 'Chưa xếp lĩnh vực',
                 checked: (status === "Đã checkin" || status === "Đã điểm danh" || time !== ""),
                 checkinTime: time
               });
