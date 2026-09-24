@@ -236,7 +236,7 @@
     // Tải dữ liệu danh sách ban đầu
     async function loadDataFromSheets() {
       const statusEl = document.getElementById("dbStatus");
-      if (!SHEET_CSV_URL || SHEET_CSV_URL.includes("DÁN_LINK_CSV")) {
+      if (!SHEET_CSV_URL || SHEET_CSV_URL.includes("https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4sLZHFDwhiBdhJbQUkIAbNYSsWkx-zxMg6vc4QAMgJu4qW4tsi6vS4PbFys_0Kra681QuCOAQ-RR1/pub?output=csv")) {
         statusEl.innerHTML = "<b style='color:red;'>Chưa cấu hình URL CSV!</b>";
         return;
       }
