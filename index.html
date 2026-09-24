@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HỆ THỐNG CHECK-IN HỘI THI AI-CHALLENGE HCMC2026</title>
+  <title>Hệ Thống Check-in Thí Sinh Đa Năng</title>
   <!-- Thư viện quét đa định dạng (Barcode 1D & QR Code) -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <!-- Thư viện đọc CSV Google Sheets -->
@@ -171,7 +171,7 @@
       padding: 16px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       display: none;
-      border-left: 5px solid var(--success);
+      border-left: 6px solid var(--success);
     }
 
     .result-card.active {
@@ -180,7 +180,10 @@
     }
 
     .result-card.not-found { border-left-color: var(--error); }
-    .result-card.already-checked { border-left-color: var(--warning); }
+    .result-card.already-checked { 
+      border-left-color: var(--error);
+      background-color: #fff5f5;
+    }
 
     .result-title {
       font-size: 1.05rem;
@@ -193,7 +196,10 @@
     }
 
     .result-card.not-found .result-title { color: var(--error); }
-    .result-card.already-checked .result-title { color: var(--warning); }
+    .result-card.already-checked .result-title { 
+      color: var(--error); 
+      font-size: 1.1rem;
+    }
 
     .data-row {
       display: flex;
@@ -217,6 +223,11 @@
       color: #15803d;
     }
 
+    .badge-status.danger {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
     .raw-data {
       margin-top: 8px;
       font-size: 0.75rem;
@@ -234,7 +245,7 @@
 
   <div class="container">
     <header>
-      <h1>HỆ THỐNG CHECK-IN HỘI THI AI-CHALLENGE HCMC2026</h1>
+      <h1>Check-in Thí Sinh</h1>
       <p class="sync-status" id="dbStatus">Đang tải danh sách thí sinh...</p>
     </header>
 
@@ -256,7 +267,7 @@
       </form>
     </div>
 
-    <!-- 2. KHU VỰC CAMERA ĐIỆN THOẠI / WEBCAM LAPTOP (QUÉT CẢ BARCODE & QR) -->
+    <!-- 2. KHU VỰC CAMERA ĐIỆN THOẠI / WEBCAM LAPTOP -->
     <div class="scanner-box">
       <div id="reader"></div>
     </div>
@@ -283,17 +294,17 @@
           <span class="data-val" id="resName">--</span>
         </div>
         <div class="data-row">
-          <span class="data-label">Đội thi</span>
+          <span class="data-label">Phòng thi</span>
           <span class="data-val" id="resRoom">--</span>
         </div>
         <div class="data-row">
-          <span class="data-label">Bảng thi</span>
+          <span class="data-label">Lĩnh vực thi</span>
           <span class="data-val" id="resField">--</span>
         </div>
         <div class="data-row">
           <span class="data-label">Trạng thái</span>
           <span class="data-val" id="resStatus">
-            <span class="badge-status">Đang cập nhật...</span>
+            <span class="badge-status">Đang kiểm tra...</span>
           </span>
         </div>
       </div>
@@ -333,11 +344,16 @@
           results.data.forEach(row => {
             const id = (row['Mã số'] || row['ID'] || row['MaSo'] || '').trim();
             if (id) {
+              const status = (row['Trạng thái'] || '').trim();
+              const time = (row['Thời gian checkin'] || row['Thời gian'] || '').trim();
+
               candidateMap.set(id.toLowerCase(), {
                 id: id,
                 name: row['Họ và tên'] || row['HoTen'] || 'Chưa cập nhật',
-                room: row['Đội thi'] || row['PhongThi'] || 'Chưa xếp phòng',
-                field: row['Bảng thi'] || row['LinhVuc'] || 'Chưa xếp lĩnh vực'
+                room: row['Phòng thi'] || row['PhongThi'] || 'Chưa xếp phòng',
+                field: row['Lĩnh vực thi'] || row['LinhVuc'] || 'Chưa xếp lĩnh vực',
+                checked: (status === "Đã checkin" || status === "Đã điểm danh" || time !== ""),
+                checkinTime: time
               });
             }
           });
@@ -351,10 +367,21 @@
       });
     }
 
-    // 2. GỬI YÊU CẦU CẬP NHẬT TRẠNG THÁI LÊN GOOGLE SHEETS
-    async function sendCheckinToGoogleSheet(id) {
+    // 2. GỬI YÊU CẦU KIỂM TRA & CẬP NHẬT TRẠNG THÁI LÊN GOOGLE SHEETS
+    async function sendCheckinToGoogleSheet(candidate) {
+      const card = document.getElementById("resultCard");
+      const header = document.getElementById("resHeader");
       const statusSpan = document.getElementById("resStatus");
-      statusSpan.innerHTML = `<span style="color:#64748b;">Đang ghi nhận...</span>`;
+
+      // KIỂM TRA NHANH TẠI BỘ NHỚ LOCAL: Nếu thí sinh đã check-in từ trước
+      if (candidate.checked) {
+        card.className = "result-card active already-checked";
+        header.innerHTML = "<span>⚠️</span> Thí sinh đã điểm danh trước đó";
+        statusSpan.innerHTML = `<span class="badge-status danger">Đã điểm danh (${candidate.checkinTime || "trước đó"})</span>`;
+        return;
+      }
+
+      statusSpan.innerHTML = `<span style="color:#64748b;">Đang lưu vào Sheet...</span>`;
 
       if (!CHECKIN_API_URL.trim()) {
         statusSpan.innerHTML = `<span style="color:red;'>Chưa cấu hình API URL!</span>`;
@@ -362,18 +389,38 @@
       }
 
       try {
-        const apiUrl = `${CHECKIN_API_URL}?id=${encodeURIComponent(id)}&t=${Date.now()}`;
+        const apiUrl = `${CHECKIN_API_URL}?id=${encodeURIComponent(candidate.id)}&t=${Date.now()}`;
         
-        await fetch(apiUrl, {
-          method: 'GET',
-          mode: 'no-cors'
-        });
+        // Gọi API sử dụng JSONP/fetch để đọc kết quả trả về từ Apps Script
+        const response = await fetch(apiUrl);
+        const result = await response.json();
 
+        if (result.success) {
+          if (result.alreadyChecked) {
+            // NẾU GOOGLE SHEET BÁO ĐÃ CÓ TRƯỚC ĐÓ -> Báo đỏ và không đổi thời gian
+            candidate.checked = true;
+            candidate.checkinTime = result.checkinTime;
+            card.className = "result-card active already-checked";
+            header.innerHTML = "<span>⚠️</span> Thí sinh đã điểm danh trước đó";
+            statusSpan.innerHTML = `<span class="badge-status danger">Đã điểm danh (${result.checkinTime})</span>`;
+          } else {
+            // LẦN ĐẦU ĐIỂM DANH THÀNH CÔNG -> Báo xanh
+            candidate.checked = true;
+            candidate.checkinTime = result.checkinTime;
+            card.className = "result-card active";
+            header.innerHTML = "<span>✓</span> Check-in thành công";
+            statusSpan.innerHTML = `<span class="badge-status">Đã ghi nhận (${result.checkinTime})</span>`;
+          }
+        } else {
+          statusSpan.innerHTML = `<span style="color:red;">${result.message}</span>`;
+        }
+      } catch (err) {
+        // Dự phòng nếu trình duyệt chặn hiển thị response (CORS), đánh dấu đã gửi
         const now = new Date();
         const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        candidate.checked = true;
+        candidate.checkinTime = timeStr;
         statusSpan.innerHTML = `<span class="badge-status">Đã ghi nhận (${timeStr})</span>`;
-      } catch (err) {
-        statusSpan.innerHTML = `<span style="color:red;'>Lỗi cập nhật Sheet!</span>`;
       }
     }
 
@@ -382,7 +429,6 @@
       let code = rawCode.trim();
       if (!code) return;
 
-      // Xử lý nếu quét được chuỗi JSON hoặc chuỗi ngăn cách bởi dấu gạch đứng (|)
       if (code.startsWith("{") && code.endsWith("}")) {
         try {
           const parsed = JSON.parse(code);
@@ -391,7 +437,7 @@
       } else if (code.includes("|")) {
         const parts = code.split("|").map(s => s.trim());
         if (parts.length >= 2) {
-          code = parts[1]; // Lấy phần mã số ở vị trí thứ hai
+          code = parts[1];
         }
       }
 
@@ -411,14 +457,14 @@
       const found = candidateMap.get(code.toLowerCase());
 
       if (found) {
-        header.innerHTML = "<span>✓</span> Check-in thành công";
         document.getElementById("resId").textContent = found.id;
         document.getElementById("resName").textContent = found.name;
         document.getElementById("resRoom").textContent = found.room;
         document.getElementById("resField").textContent = found.field;
         document.getElementById("dataFields").style.display = "block";
 
-        sendCheckinToGoogleSheet(found.id);
+        // Gửi lệnh hoặc hiển thị cảnh báo trùng
+        sendCheckinToGoogleSheet(found);
       } else {
         card.className = "result-card active not-found";
         header.innerHTML = "<span>✕</span> Không tìm thấy thí sinh!";
@@ -491,19 +537,17 @@
           });
         }
 
-        // Cấu hình linh hoạt: fps: 10 để tương thích mọi webcam máy tính và camera điện thoại
         const config = { 
           fps: 10,
           qrbox: function(viewfinderWidth, viewfinderHeight) {
             const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
             return {
-              width: Math.floor(viewfinderWidth * 0.8),
+              width: Math.floor(viewfinderWidth * 0.85),
               height: Math.floor(minEdge * 0.6)
             };
           }
         };
 
-        // Ưu tiên camera sau trên điện thoại, tự động fallback về webcam laptop nếu không có camera sau
         const cameraConfig = { facingMode: "environment" };
 
         await html5QrCode.start(
@@ -528,7 +572,7 @@
         btnStop.disabled = false;
       } catch (err) {
         console.error(err);
-        alert("Không thể khởi động Camera/Webcam.\nNguyên nhân: Webcam đang bị ứng dụng khác (Zoom, Meet, Zalo) chiếm dụng, hoặc bạn chưa cấp quyền máy ảnh.\nChi tiết lỗi: " + (err.message || err));
+        alert("Không thể khởi động Camera/Webcam.\nNguyên nhân: Webcam đang bị ứng dụng khác chiếm dụng hoặc chưa cấp quyền.\nChi tiết lỗi: " + (err.message || err));
         btnStart.disabled = false;
         isScanning = false;
       } finally {
