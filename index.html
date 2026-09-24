@@ -3,10 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tra Cứu Thí Sinh Từ Google Sheets</title>
-  <!-- Thư viện quét mã Barcode / QR -->
+  <title>Checkin Thí Sinh</title>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <!-- Thư viện đọc CSV nhanh chóng -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
     :root {
@@ -17,6 +15,7 @@
       --border: #e2e8f0;
       --success: #16a34a;
       --error: #dc2626;
+      --warning: #d97706;
     }
 
     * {
@@ -110,9 +109,8 @@
       animation: fadeIn 0.3s ease;
     }
 
-    .result-card.not-found {
-      border-left-color: var(--error);
-    }
+    .result-card.not-found { border-left-color: var(--error); }
+    .result-card.already-checked { border-left-color: var(--warning); }
 
     .result-title {
       font-size: 1.1rem;
@@ -124,9 +122,8 @@
       gap: 8px;
     }
 
-    .result-card.not-found .result-title {
-      color: var(--error);
-    }
+    .result-card.not-found .result-title { color: var(--error); }
+    .result-card.already-checked .result-title { color: var(--warning); }
 
     .data-row {
       display: flex;
@@ -136,19 +133,22 @@
       border-bottom: 1px solid var(--border);
     }
 
-    .data-row:last-child {
-      border-bottom: none;
-    }
+    .data-row:last-child { border-bottom: none; }
+    .data-label { color: #64748b; font-size: 0.9rem; }
+    .data-val { font-weight: 600; font-size: 0.95rem; text-align: right; }
 
-    .data-label {
-      color: #64748b;
-      font-size: 0.9rem;
+    .badge-status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      background: #dcfce7;
+      color: #15803d;
     }
-
-    .data-val {
-      font-weight: 600;
-      font-size: 0.95rem;
-      text-align: right;
+    .badge-status.warning {
+      background: #fef3c7;
+      color: #b45309;
     }
 
     .raw-data {
@@ -168,7 +168,7 @@
 
   <div class="container">
     <header>
-      <h1>Tra Cứu Thí Sinh</h1>
+      <h1>Checkin Thí Sinh</h1>
       <p class="sync-status" id="dbStatus">Đang tải danh sách thí sinh...</p>
     </header>
 
@@ -179,13 +179,13 @@
     <div class="controls">
       <button id="btnStart" class="btn-start" onclick="startScanner()">Bật Camera</button>
       <button id="btnStop" class="btn-stop" onclick="stopScanner()" disabled>Tắt</button>
-      <button class="btn-reload" onclick="loadDataFromSheets()" title="Tải lại bảng tính">Làm mới dữ liệu</button>
+      <button class="btn-reload" onclick="loadDataFromSheets()">Làm mới</button>
     </div>
 
     <!-- Khối hiển thị kết quả -->
     <div id="resultCard" class="result-card">
       <div class="result-title" id="resHeader">
-        <span>✓</span> Đã tìm thấy thí sinh
+        <span>✓</span> Check-in thành công
       </div>
       
       <div id="dataFields">
@@ -205,6 +205,12 @@
           <span class="data-label">Lĩnh vực thi</span>
           <span class="data-val" id="resField">--</span>
         </div>
+        <div class="data-row">
+          <span class="data-label">Trạng thái</span>
+          <span class="data-val" id="resStatus">
+            <span class="badge-status">Đang cập nhật...</span>
+          </span>
+        </div>
       </div>
 
       <div class="raw-data" id="resRaw"></div>
@@ -213,36 +219,38 @@
 
   <script>
     // -------------------------------------------------------------
-    // DÁN ĐƯỜNG LINK CSV XUẤT BẢN TỪ GOOGLE SHEETS CỦA BẠN VÀO ĐÂY:
+    // 1. LINK CSV TỪ GOOGLE SHEET (DÙNG ĐỂ TẢI NHANH DANH SÁCH)
     // -------------------------------------------------------------
-    const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4sLZHFDwhiBdhJbQUkIAbNYSsWkx-zxMg6vc4QAMgJu4qW4tsi6vS4PbFys_0Kra681QuCOAQ-RR1/pub?output=tsv";
+    const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4sLZHFDwhiBdhJbQUkIAbNYSsWkx-zxMg6vc4QAMgJu4qW4tsi6vS4PbFys_0Kra681QuCOAQ-RR1/pubhtml";
 
-    let candidateMap = new Map(); // Lưu dữ liệu dạng: Mã số => Thông tin
+    // -------------------------------------------------------------
+    // 2. LINK WEB APP APPS SCRIPT VỪA TẠO Ở BƯỚC 1 (DÙNG ĐỂ GHI DỮ LIỆU)
+    // -------------------------------------------------------------
+    const CHECKIN_API_URL = "https://script.google.com/macros/s/AKfycbwyysUeK3wwmAqsiYKZQkE_PquC_NQBSvvjarmef_SJVgip5OYuLdAM3lMst2v9HpB5/exec";
+
+    let candidateMap = new Map();
     let html5QrCode = null;
     let isScanning = false;
     let lastScannedCode = null;
 
-    // Tải dữ liệu từ Google Sheets
+    // Tải dữ liệu danh sách ban đầu
     async function loadDataFromSheets() {
       const statusEl = document.getElementById("dbStatus");
       if (!SHEET_CSV_URL || SHEET_CSV_URL.includes("DÁN_LINK_CSV")) {
-        statusEl.innerHTML = "<b style='color:red;'>Chưa cấu hình URL Google Sheets!</b>";
+        statusEl.innerHTML = "<b style='color:red;'>Chưa cấu hình URL CSV!</b>";
         return;
       }
 
-      statusEl.textContent = "Đang đồng bộ dữ liệu từ Google Sheets...";
-      
-      // Thêm timestamp để tránh cache trình duyệt khi bạn sửa sheet
-      const urlWithCacheBuster = SHEET_CSV_URL + (SHEET_CSV_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
+      statusEl.textContent = "Đang đồng bộ danh sách...";
+      const urlWithBuster = SHEET_CSV_URL + (SHEET_CSV_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
 
-      Papa.parse(urlWithCacheBuster, {
+      Papa.parse(urlWithBuster, {
         download: true,
         header: true,
         skipEmptyLines: true,
         complete: function(results) {
           candidateMap.clear();
           results.data.forEach(row => {
-            // Lấy mã số làm khóa tra cứu (loại bỏ khoảng trắng thừa)
             const id = (row['Mã số'] || row['ID'] || row['MaSo'] || '').trim();
             if (id) {
               candidateMap.set(id.toLowerCase(), {
@@ -253,55 +261,86 @@
               });
             }
           });
-          statusEl.textContent = `Đã đồng bộ ${candidateMap.size} thí sinh từ Sheets`;
+          statusEl.textContent = `Đã đồng bộ ${candidateMap.size} thí sinh`;
           statusEl.style.color = "#16a34a";
         },
-        error: function(err) {
-          statusEl.textContent = "Lỗi khi tải dữ liệu Sheets. Kiểm tra lại quyền chia sẻ!";
+        error: function() {
+          statusEl.textContent = "Lỗi khi tải dữ liệu Sheets!";
           statusEl.style.color = "#dc2626";
         }
       });
     }
 
-    // Khi quét mã thành công
-    function onScanSuccess(decodedText, decodedResult) {
+    // Gửi yêu cầu cập nhật "Đã checkin" lên Google Sheet
+    async function sendCheckinToGoogleSheet(id) {
+      const statusSpan = document.getElementById("resStatus");
+      statusSpan.innerHTML = `<span style="color:#64748b;">Đang lưu vào Sheet...</span>`;
+
+      if (!CHECKIN_API_URL || CHECKIN_API_URL.includes("DÁN_LINK_APPS_SCRIPT")) {
+        statusSpan.innerHTML = `<span style="color:red;">Chưa cấu hình API URL!</span>`;
+        return;
+      }
+
+      try {
+        const response = await fetch(`${CHECKIN_API_URL}?id=${encodeURIComponent(id)}`);
+        const result = await response.json();
+
+        if (result.success) {
+          const card = document.getElementById("resultCard");
+          const header = document.getElementById("resHeader");
+
+          if (result.alreadyChecked) {
+            card.classList.remove("active");
+            card.className = "result-card active already-checked";
+            header.innerHTML = "<span>⚠️</span> Thí sinh này ĐÃ CHECK-IN trước đó!";
+            statusSpan.innerHTML = `<span class="badge-status warning">Đã checkin lúc ${result.checkinTime}</span>`;
+          } else {
+            statusSpan.innerHTML = `<span class="badge-status">Đã checkin (${result.checkinTime})</span>`;
+          }
+        } else {
+          statusSpan.innerHTML = `<span style="color:red;">${result.message}</span>`;
+        }
+      } catch (err) {
+        statusSpan.innerHTML = `<span style="color:red;">Lỗi kết nối khi cập nhật!</span>`;
+      }
+    }
+
+    // Khi camera nhận diện được mã
+    function onScanSuccess(decodedText) {
       const code = decodedText.trim();
-      
-      // Tránh quét liên tục cùng 1 mã trong thời gian quá ngắn (1.5 giây)
       if (code === lastScannedCode) return;
       lastScannedCode = code;
-      setTimeout(() => { lastScannedCode = null; }, 1500);
+      setTimeout(() => { lastScannedCode = null; }, 2000);
 
-      if (navigator.vibrate) {
-        navigator.vibrate(100);
-      }
+      if (navigator.vibrate) navigator.vibrate(100);
 
       const card = document.getElementById("resultCard");
       const header = document.getElementById("resHeader");
       const rawEl = document.getElementById("resRaw");
 
-      rawEl.textContent = `Mã quét được: ${code}`;
-      card.classList.add("active");
+      rawEl.textContent = `Mã quét: ${code}`;
+      card.className = "result-card active";
 
-      // Tra cứu trong Map (không phân biệt chữ hoa/thường)
       const found = candidateMap.get(code.toLowerCase());
 
       if (found) {
-        card.classList.remove("not-found");
-        header.innerHTML = "<span>✓</span> Đã tìm thấy thí sinh";
+        header.innerHTML = "<span>✓</span> Check-in thành công";
         document.getElementById("resId").textContent = found.id;
         document.getElementById("resName").textContent = found.name;
         document.getElementById("resRoom").textContent = found.room;
         document.getElementById("resField").textContent = found.field;
         document.getElementById("dataFields").style.display = "block";
+
+        // Gửi lệnh ghi nhận lên Google Sheet
+        sendCheckinToGoogleSheet(found.id);
       } else {
-        card.classList.add("not-found");
+        card.className = "result-card active not-found";
         header.innerHTML = "<span>✕</span> Không tìm thấy thí sinh!";
         document.getElementById("resId").textContent = code;
         document.getElementById("resName").textContent = "Không có trong danh sách";
         document.getElementById("resRoom").textContent = "--";
         document.getElementById("resField").textContent = "--";
-        document.getElementById("dataFields").style.display = "block";
+        document.getElementById("resStatus").innerHTML = `<span style="color:red;">Không thể check-in</span>`;
       }
     }
 
@@ -309,25 +348,14 @@
       if (!html5QrCode) {
         html5QrCode = new Html5Qrcode("reader");
       }
-
-      const config = {
-        fps: 15,
-        // Khung quét chữ nhật tối ưu cho quét Barcode mã vạch ngang
-        qrbox: { width: 300, height: 160 },
-        aspectRatio: 1.333334
-      };
-
+      const config = { fps: 15, qrbox: { width: 300, height: 160 }, aspectRatio: 1.333334 };
       try {
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          config,
-          onScanSuccess
-        );
+        await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
         document.getElementById("btnStart").disabled = true;
         document.getElementById("btnStop").disabled = false;
         isScanning = true;
       } catch (err) {
-        alert("Không thể khởi động camera: " + err);
+        alert("Lỗi mở camera: " + err);
       }
     }
 
@@ -340,7 +368,6 @@
       }
     }
 
-    // Tự động tải dữ liệu Google Sheets khi vừa mở trang
     window.addEventListener("DOMContentLoaded", loadDataFromSheets);
   </script>
 </body>
