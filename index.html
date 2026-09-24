@@ -228,7 +228,7 @@
       <p class="sync-status" id="dbStatus">Đang tải danh sách thí sinh...</p>
     </header>
 
-    <!-- Khu vực dành cho Súng bắn Barcode USB hoặc Nhập tay -->
+    <!-- Khu vực dành cho Súng quét Barcode USB / Gõ tay -->
     <div class="scanner-gun-box">
       <div class="gun-hint">
         <span>🔫 Súng quét Barcode USB / Gõ tay</span>
@@ -293,6 +293,7 @@
     let candidateMap = new Map();
     let html5QrCode = null;
     let isScanning = false;
+    let isStarting = false;
     let lastScannedCode = null;
 
     // Tải dữ liệu danh sách ban đầu từ Google Sheets
@@ -414,16 +415,14 @@
       input.focus();
     }
 
-    // Lắng nghe phím toàn trang: Nếu súng bắn khi chưa bấm vào ô input, vẫn tự nhận diện
+    // Lắng nghe súng bắn Barcode toàn trang (bắn khi chưa focus vào ô input vẫn nhận)
     let barcodeBuffer = "";
     let lastKeyTime = Date.now();
 
     window.addEventListener("keydown", (e) => {
-      // Nếu người dùng đang tập trung gõ vào ô input thì để mặc định form xử lý
       if (document.activeElement === document.getElementById("barcodeInput")) return;
 
       const currentTime = Date.now();
-      // Súng quét gõ cực nhanh (thường các ký tự cách nhau dưới 50ms)
       if (currentTime - lastKeyTime > 100) {
         barcodeBuffer = "";
       }
@@ -439,37 +438,66 @@
       }
     });
 
-    // Mở Camera / Webcam (Hỗ trợ cả máy tính lẫn điện thoại)
+    // Mở Camera / Webcam an toàn
     async function startScanner() {
-      if (!html5QrCode) {
-        html5QrCode = new Html5Qrcode("reader");
-      }
-      const config = { fps: 15, qrbox: { width: 300, height: 160 }, aspectRatio: 1.333334 };
+      if (isScanning || isStarting) return;
+
+      const btnStart = document.getElementById("btnStart");
+      const btnStop = document.getElementById("btnStop");
+      
+      isStarting = true;
+      btnStart.disabled = true;
+
       try {
-        await html5QrCode.start({ facingMode: { ideal: "environment" } }, config, onScanSuccess);
-        document.getElementById("btnStart").disabled = true;
-        document.getElementById("btnStop").disabled = false;
-        isScanning = true;
-      } catch (err) {
-        try {
-          const cameras = await Html5Qrcode.getCameras();
-          if (cameras && cameras.length) {
-            await html5QrCode.start(cameras[0].id, config, onScanSuccess);
-            document.getElementById("btnStart").disabled = true;
-            document.getElementById("btnStop").disabled = false;
-            isScanning = true;
-          } else {
-            alert("Không tìm thấy Webcam/Camera!");
-          }
-        } catch (e) {
-          alert("Lỗi mở camera: " + e);
+        if (!html5QrCode) {
+          html5QrCode = new Html5Qrcode("reader");
         }
+
+        const config = { 
+          fps: 15, 
+          qrbox: { width: 280, height: 160 }, 
+          aspectRatio: 1.333334 
+        };
+
+        const devices = await Html5Qrcode.getCameras();
+        
+        if (devices && devices.length > 0) {
+          let selectedCameraId = devices[0].id;
+          const backCamera = devices.find(d => 
+            d.label.toLowerCase().includes('back') || 
+            d.label.toLowerCase().includes('rear') || 
+            d.label.toLowerCase().includes('sau')
+          );
+          if (backCamera) {
+            selectedCameraId = backCamera.id;
+          }
+
+          await html5QrCode.start(selectedCameraId, config, onScanSuccess);
+          
+          isScanning = true;
+          btnStop.disabled = false;
+        } else {
+          alert("Không tìm thấy Camera hoặc Webcam nào trên thiết bị!");
+          btnStart.disabled = false;
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Lỗi khi mở camera/webcam: " + (err.message || err));
+        btnStart.disabled = false;
+        isScanning = false;
+      } finally {
+        isStarting = false;
       }
     }
 
+    // Tắt Camera
     async function stopScanner() {
       if (html5QrCode && isScanning) {
-        await html5QrCode.stop();
+        try {
+          await html5QrCode.stop();
+        } catch (e) {
+          console.error(e);
+        }
         document.getElementById("btnStart").disabled = false;
         document.getElementById("btnStop").disabled = true;
         isScanning = false;
