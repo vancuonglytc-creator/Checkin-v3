@@ -382,7 +382,7 @@
       let code = rawCode.trim();
       if (!code) return;
 
-      // Xử lý nếu mã quét được là dạng chuỗi JSON hoặc chứa dấu gạch đứng (|)
+      // Xử lý nếu quét được chuỗi JSON hoặc chuỗi ngăn cách bởi dấu gạch đứng (|)
       if (code.startsWith("{") && code.endsWith("}")) {
         try {
           const parsed = JSON.parse(code);
@@ -391,12 +391,10 @@
       } else if (code.includes("|")) {
         const parts = code.split("|").map(s => s.trim());
         if (parts.length >= 2) {
-          // Nếu dạng: Họ tên | Mã số | ... thì lấy phần mã số
-          code = parts[1];
+          code = parts[1]; // Lấy phần mã số ở vị trí thứ hai
         }
       }
 
-      // Tránh xử lý liên tục cùng 1 mã trong 1.5 giây
       if (code === lastProcessedCode) return;
       lastProcessedCode = code;
       setTimeout(() => { lastProcessedCode = null; }, 1500);
@@ -441,16 +439,14 @@
       input.focus();
     }
 
-    // 5. TỰ ĐỘNG BẮT TÍN HIỆU TỪ SÚNG QUÉT MÃ VẠCH / QR USB (CẮM MÁY TÍNH LÀ BẮN ĐƯỢC)
+    // 5. TỰ ĐỘNG BẮT TÍN HIỆU TỪ SÚNG QUÉT MÃ VẠCH / QR USB
     let barcodeBuffer = "";
     let lastKeyTime = Date.now();
 
     window.addEventListener("keydown", (e) => {
-      // Nếu đang chủ động gõ trong ô nhập tay thì để form tự nhận
       if (document.activeElement === document.getElementById("manualCodeInput")) return;
 
       const currentTime = Date.now();
-      // Súng quét gõ cực nhanh (dưới 60ms giữa mỗi phím)
       if (currentTime - lastKeyTime > 80) {
         barcodeBuffer = "";
       }
@@ -466,7 +462,7 @@
       }
     });
 
-    // 6. KHỞI ĐỘNG CAMERA/WEBCAM HỖ TRỢ CẢ MÃ VẠCH (1D) VÀ QR CODE (2D)
+    // 6. KHỞI ĐỘNG CAMERA/WEBCAM (ĐÃ FIX LỖI CÚ PHÁP CHUẨN XÁC)
     async function startScanner() {
       if (isScanning || isStarting) return;
 
@@ -478,7 +474,6 @@
 
       try {
         if (!html5QrCode) {
-          // Khai báo đầy đủ các định dạng: QR code và các loại Barcode sọc phổ biến
           const formatsToSupport = [
             Html5QrcodeSupportedFormats.QR_CODE,
             Html5QrcodeSupportedFormats.CODE_128,
@@ -496,22 +491,19 @@
           });
         }
 
-        // Khung quét ngang tối ưu để bắt trọn chiều dài của mã vạch và QR code
-        const qrBoxFunction = function(viewfinderWidth, viewfinderHeight) {
-          const width = Math.floor(viewfinderWidth * 0.85);
-          const height = Math.floor(viewfinderHeight * 0.50);
-          return { width: width, height: height };
-        };
-
         const config = { 
           fps: 20, 
-          qrbox: qrBoxFunction
+          qrbox: function(viewfinderWidth, viewfinderHeight) {
+            const width = Math.floor(viewfinderWidth * 0.85);
+            const height = Math.floor(viewfinderHeight * 0.50);
+            return { width: width, height: height };
+          },
+          aspectRatio: 1.333334
         };
 
         const devices = await Html5Qrcode.getCameras();
         
         if (devices && devices.length > 0) {
-          // Ưu tiên camera sau (trên điện thoại), nếu là Laptop sẽ dùng Webcam có sẵn
           let selectedCameraId = devices[0].id;
           const backCamera = devices.find(d => 
             d.label.toLowerCase().includes('back') || 
@@ -523,14 +515,9 @@
             selectedCameraId = backCamera.id;
           }
 
-          const videoConstraints = {
-            deviceId: selectedCameraId,
-            width: { min: 640, ideal: 1280, max: 1920 },
-            height: { min: 480, ideal: 720, max: 1080 }
-          };
-
+          // Truyền trực tiếp ID thiết bị dạng chuỗi String
           await html5QrCode.start(
-            videoConstraints, 
+            selectedCameraId, 
             config, 
             (decodedText) => processCandidateCode(decodedText)
           );
@@ -565,7 +552,6 @@
       }
     }
 
-    // Tự động tải dữ liệu khi vừa mở trang
     window.addEventListener("DOMContentLoaded", () => {
       loadDataFromSheets();
       document.getElementById("manualCodeInput").focus();
