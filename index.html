@@ -276,7 +276,7 @@
       const statusSpan = document.getElementById("resStatus");
       statusSpan.innerHTML = `<span style="color:#64748b;">Đang lưu vào Sheet...</span>`;
 
-      if (!CHECKIN_API_URL || CHECKIN_API_URL.includes("DÁN_LINK_APPS_SCRIPT")) {
+      if (!CHECKIN_API_URL || CHECKIN_API_URL.includes("https://script.google.com/macros/s/AKfycbwyysUeK3wwmAqsiYKZQkE_PquC_NQBSvvjarmef_SJVgip5OYuLdAM3lMst2v9HpB5/exec")) {
         statusSpan.innerHTML = `<span style="color:red;">Chưa cấu hình API URL!</span>`;
         return;
       }
