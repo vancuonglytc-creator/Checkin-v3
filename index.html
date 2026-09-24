@@ -37,19 +37,19 @@
 
     .container {
       width: 100%;
-      max-width: 480px;
+      max-width: 500px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
 
     header {
       text-align: center;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
 
     h1 {
-      font-size: 1.25rem;
+      font-size: 1.3rem;
       font-weight: 700;
       color: var(--primary);
     }
@@ -60,9 +60,69 @@
       margin-top: 4px;
     }
 
+    /* Khung nhập súng quét USB / Gõ tay */
+    .scanner-gun-box {
+      background: var(--card-bg);
+      padding: 12px 14px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .gun-hint {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .gun-hint span {
+      background: #e2e8f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+    }
+
+    .gun-input-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .gun-input-group input {
+      flex: 1;
+      padding: 10px 12px;
+      border: 2px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .gun-input-group input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .gun-input-group button {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
     .scanner-box {
       background: var(--card-bg);
-      border-radius: 16px;
+      border-radius: 14px;
       overflow: hidden;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       position: relative;
@@ -75,30 +135,30 @@
 
     .controls {
       display: flex;
-      gap: 10px;
+      gap: 8px;
     }
 
-    button {
+    button.btn-ctrl {
       flex: 1;
-      padding: 12px;
+      padding: 10px;
       border: none;
       border-radius: 8px;
       font-weight: 600;
       cursor: pointer;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       transition: opacity 0.2s;
     }
 
     .btn-start { background-color: var(--primary); color: #fff; }
     .btn-stop { background-color: #ef4444; color: #fff; }
-    .btn-reload { background-color: #475569; color: #fff; flex: 0.6; }
+    .btn-reload { background-color: #475569; color: #fff; flex: 0.8; }
 
     button:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .result-card {
       background: var(--card-bg);
-      border-radius: 16px;
-      padding: 20px;
+      border-radius: 14px;
+      padding: 18px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       display: none;
       border-left: 5px solid var(--success);
@@ -115,7 +175,7 @@
     .result-title {
       font-size: 1.1rem;
       font-weight: 700;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
       color: var(--success);
       display: flex;
       align-items: center;
@@ -129,7 +189,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 8px 0;
+      padding: 7px 0;
       border-bottom: 1px solid var(--border);
     }
 
@@ -146,13 +206,9 @@
       background: #dcfce7;
       color: #15803d;
     }
-    .badge-status.warning {
-      background: #fef3c7;
-      color: #b45309;
-    }
 
     .raw-data {
-      margin-top: 10px;
+      margin-top: 8px;
       font-size: 0.75rem;
       color: #94a3b8;
       word-break: break-all;
@@ -172,17 +228,30 @@
       <p class="sync-status" id="dbStatus">Đang tải danh sách thí sinh...</p>
     </header>
 
+    <!-- Khu vực dành cho Súng bắn Barcode USB hoặc Nhập tay -->
+    <div class="scanner-gun-box">
+      <div class="gun-hint">
+        <span>🔫 Súng quét Barcode USB / Gõ tay</span>
+        <small style="color: #64748b;">(Cắm súng là bắn được ngay)</small>
+      </div>
+      <form class="gun-input-group" onsubmit="handleManualSubmit(event)">
+        <input type="text" id="barcodeInput" placeholder="Bắn súng mã vạch hoặc nhập mã số..." autocomplete="off" autofocus />
+        <button type="submit">Kiểm tra</button>
+      </form>
+    </div>
+
+    <!-- Khu vực Camera / Webcam -->
     <div class="scanner-box">
       <div id="reader"></div>
     </div>
 
     <div class="controls">
-      <button id="btnStart" class="btn-start" onclick="startScanner()">Bật Camera</button>
-      <button id="btnStop" class="btn-stop" onclick="stopScanner()" disabled>Tắt</button>
-      <button class="btn-reload" onclick="loadDataFromSheets()">Làm mới</button>
+      <button id="btnStart" class="btn-ctrl btn-start" onclick="startScanner()">Bật Camera / Webcam</button>
+      <button id="btnStop" class="btn-ctrl btn-stop" onclick="stopScanner()" disabled>Tắt</button>
+      <button class="btn-ctrl btn-reload" onclick="loadDataFromSheets()">Làm mới Sheet</button>
     </div>
 
-    <!-- Khối hiển thị kết quả -->
+    <!-- Khối hiển thị thông tin thí sinh -->
     <div id="resultCard" class="result-card">
       <div class="result-title" id="resHeader">
         <span>✓</span> Check-in thành công
@@ -270,7 +339,7 @@
       statusSpan.innerHTML = `<span style="color:#64748b;">Đang lưu vào Sheet...</span>`;
 
       if (!CHECKIN_API_URL.trim()) {
-        statusSpan.innerHTML = `<span style="color:red;">Chưa cấu hình API URL!</span>`;
+        statusSpan.innerHTML = `<span style="color:red;'>Chưa cấu hình API URL!</span>`;
         return;
       }
 
@@ -286,16 +355,18 @@
         const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         statusSpan.innerHTML = `<span class="badge-status">Đã ghi nhận (${timeStr})</span>`;
       } catch (err) {
-        statusSpan.innerHTML = `<span style="color:red;">Lỗi kết nối khi cập nhật!</span>`;
+        statusSpan.innerHTML = `<span style="color:red;'>Lỗi kết nối khi cập nhật!</span>`;
       }
     }
 
-    // Khi quét thành công mã vạch hoặc mã QR
-    function onScanSuccess(decodedText) {
-      const code = decodedText.trim();
+    // Hàm xử lý chung khi nhận được mã số (từ Camera, Súng quét hay Nhập tay)
+    function processCandidateCode(rawCode) {
+      const code = rawCode.trim();
+      if (!code) return;
+
       if (code === lastScannedCode) return;
       lastScannedCode = code;
-      setTimeout(() => { lastScannedCode = null; }, 2000);
+      setTimeout(() => { lastScannedCode = null; }, 1500);
 
       if (navigator.vibrate) navigator.vibrate(100);
 
@@ -303,7 +374,7 @@
       const header = document.getElementById("resHeader");
       const rawEl = document.getElementById("resRaw");
 
-      rawEl.textContent = `Mã quét: ${code}`;
+      rawEl.textContent = `Mã quét/nhập: ${code}`;
       card.className = "result-card active";
 
       const found = candidateMap.get(code.toLowerCase());
@@ -329,18 +400,70 @@
       }
     }
 
+    // Xử lý khi quét từ Camera
+    function onScanSuccess(decodedText) {
+      processCandidateCode(decodedText);
+    }
+
+    // Xử lý khi nhấn nút hoặc bấm Enter từ ô nhập tay
+    function handleManualSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById("barcodeInput");
+      processCandidateCode(input.value);
+      input.value = "";
+      input.focus();
+    }
+
+    // Lắng nghe phím toàn trang: Nếu súng bắn khi chưa bấm vào ô input, vẫn tự nhận diện
+    let barcodeBuffer = "";
+    let lastKeyTime = Date.now();
+
+    window.addEventListener("keydown", (e) => {
+      // Nếu người dùng đang tập trung gõ vào ô input thì để mặc định form xử lý
+      if (document.activeElement === document.getElementById("barcodeInput")) return;
+
+      const currentTime = Date.now();
+      // Súng quét gõ cực nhanh (thường các ký tự cách nhau dưới 50ms)
+      if (currentTime - lastKeyTime > 100) {
+        barcodeBuffer = "";
+      }
+      lastKeyTime = currentTime;
+
+      if (e.key === "Enter") {
+        if (barcodeBuffer.length > 2) {
+          processCandidateCode(barcodeBuffer);
+          barcodeBuffer = "";
+        }
+      } else if (e.key.length === 1) {
+        barcodeBuffer += e.key;
+      }
+    });
+
+    // Mở Camera / Webcam (Hỗ trợ cả máy tính lẫn điện thoại)
     async function startScanner() {
       if (!html5QrCode) {
         html5QrCode = new Html5Qrcode("reader");
       }
       const config = { fps: 15, qrbox: { width: 300, height: 160 }, aspectRatio: 1.333334 };
       try {
-        await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
+        await html5QrCode.start({ facingMode: { ideal: "environment" } }, config, onScanSuccess);
         document.getElementById("btnStart").disabled = true;
         document.getElementById("btnStop").disabled = false;
         isScanning = true;
       } catch (err) {
-        alert("Lỗi mở camera: " + err);
+        try {
+          const cameras = await Html5Qrcode.getCameras();
+          if (cameras && cameras.length) {
+            await html5QrCode.start(cameras[0].id, config, onScanSuccess);
+            document.getElementById("btnStart").disabled = true;
+            document.getElementById("btnStop").disabled = false;
+            isScanning = true;
+          } else {
+            alert("Không tìm thấy Webcam/Camera!");
+          }
+        } catch (e) {
+          alert("Lỗi mở camera: " + e);
+        }
       }
     }
 
@@ -353,7 +476,10 @@
       }
     }
 
-    window.addEventListener("DOMContentLoaded", loadDataFromSheets);
+    window.addEventListener("DOMContentLoaded", () => {
+      loadDataFromSheets();
+      document.getElementById("barcodeInput").focus();
+    });
   </script>
 </body>
 </html>
