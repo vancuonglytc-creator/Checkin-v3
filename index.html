@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hệ Thống Check-in Thí Sinh Đa Năng</title>
+  <title>CỔNG CHECK-IN THÍ SINH AI-CHALLENGE HCMC2026</title>
   <!-- Thư viện quét đa định dạng (Barcode 1D & QR Code) -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <!-- Thư viện đọc CSV Google Sheets -->
@@ -53,9 +53,10 @@
     }
 
     h1 {
-      font-size: 1.3rem;
+      font-size: 1.25rem;
       font-weight: 700;
       color: var(--primary);
+      line-height: 1.4;
     }
 
     .sync-status {
@@ -213,6 +214,13 @@
     .data-label { color: var(--text-muted); font-size: 0.88rem; }
     .data-val { font-weight: 600; font-size: 0.95rem; text-align: right; }
 
+    /* Điểm nhấn nổi bật cho Vị trí */
+    .highlight-position {
+      color: #d97706;
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
     .badge-status {
       display: inline-block;
       padding: 4px 8px;
@@ -301,6 +309,11 @@
           <span class="data-label">Bảng thi</span>
           <span class="data-val" id="resField">--</span>
         </div>
+        <!-- DÒNG VỊ TRÍ ĐÃ ĐƯỢC BỔ SUNG -->
+        <div class="data-row">
+          <span class="data-label">Vị trí</span>
+          <span class="data-val highlight-position" id="resPosition">--</span>
+        </div>
         <div class="data-row">
           <span class="data-label">Trạng thái</span>
           <span class="data-val" id="resStatus">
@@ -324,7 +337,7 @@
     let isStarting = false;
     let lastProcessedCode = null;
 
-    // 1. TẢI DANH SÁCH DỮ LIỆU TỪ GOOGLE SHEETS
+    // 1. TẢI DANH SÁCH DỮ LIỆU TỪ GOOGLE SHEETS (ĐÃ BỔ SUNG CỘT VỊ TRÍ)
     async function loadDataFromSheets() {
       const statusEl = document.getElementById("dbStatus");
       if (!SHEET_CSV_URL.trim()) {
@@ -350,8 +363,9 @@
               candidateMap.set(id.toLowerCase(), {
                 id: id,
                 name: row['Họ và tên'] || row['HoTen'] || 'Chưa cập nhật',
-                room: row['Đội thi'] || row['PhongThi'] || 'Chưa xếp phòng',
-                field: row['Bảng thi'] || row['LinhVuc'] || 'Chưa xếp lĩnh vực',
+                room: row['Đội thi'] || row['PhongThi'] || row['Phòng thi'] || 'Chưa xếp phòng',
+                field: row['Bảng thi'] || row['Lĩnh vực thi'] || row['LinhVuc'] || 'Chưa xếp lĩnh vực',
+                position: row['Vị trí'] || row['ViTri'] || 'Chưa xếp vị trí', // Đọc cột Vị trí
                 checked: (status === "Đã checkin" || status === "Đã điểm danh" || time !== ""),
                 checkinTime: time
               });
@@ -390,21 +404,17 @@
 
       try {
         const apiUrl = `${CHECKIN_API_URL}?id=${encodeURIComponent(candidate.id)}&t=${Date.now()}`;
-        
-        // Gọi API sử dụng JSONP/fetch để đọc kết quả trả về từ Apps Script
         const response = await fetch(apiUrl);
         const result = await response.json();
 
         if (result.success) {
           if (result.alreadyChecked) {
-            // NẾU GOOGLE SHEET BÁO ĐÃ CÓ TRƯỚC ĐÓ -> Báo đỏ và không đổi thời gian
             candidate.checked = true;
             candidate.checkinTime = result.checkinTime;
             card.className = "result-card active already-checked";
             header.innerHTML = "<span>⚠️</span> Thí sinh đã điểm danh trước đó";
             statusSpan.innerHTML = `<span class="badge-status danger">Đã điểm danh (${result.checkinTime})</span>`;
           } else {
-            // LẦN ĐẦU ĐIỂM DANH THÀNH CÔNG -> Báo xanh
             candidate.checked = true;
             candidate.checkinTime = result.checkinTime;
             card.className = "result-card active";
@@ -415,7 +425,6 @@
           statusSpan.innerHTML = `<span style="color:red;">${result.message}</span>`;
         }
       } catch (err) {
-        // Dự phòng nếu trình duyệt chặn hiển thị response (CORS), đánh dấu đã gửi
         const now = new Date();
         const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         candidate.checked = true;
@@ -461,9 +470,9 @@
         document.getElementById("resName").textContent = found.name;
         document.getElementById("resRoom").textContent = found.room;
         document.getElementById("resField").textContent = found.field;
+        document.getElementById("resPosition").textContent = found.position; // Hiển thị Vị trí
         document.getElementById("dataFields").style.display = "block";
 
-        // Gửi lệnh hoặc hiển thị cảnh báo trùng
         sendCheckinToGoogleSheet(found);
       } else {
         card.className = "result-card active not-found";
@@ -472,6 +481,7 @@
         document.getElementById("resName").textContent = "Không có trong danh sách";
         document.getElementById("resRoom").textContent = "--";
         document.getElementById("resField").textContent = "--";
+        document.getElementById("resPosition").textContent = "--";
         document.getElementById("resStatus").innerHTML = `<span style="color:red;">Không thể check-in</span>`;
       }
     }
