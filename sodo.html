@@ -3,22 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sơ Đồ Bàn Thi & Tiến Độ Check-in AI-CHALLENGE HCMC2026</title>
-  <!-- Thư viện đọc CSV Google Sheets -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <title>SƠ ĐỒ CHECK-IN REALTIME - AI-CHALLENGE HCMC2026</title>
   <style>
     :root {
       --primary: #1d4ed8;
-      --bg: #0f172a;
-      --panel-bg: #1e293b;
+      --bg: #0b1329;
+      --panel-bg: #152238;
       --text: #f8fafc;
       --text-muted: #94a3b8;
-      --border: #334155;
+      --border: #24344d;
       
       --color-full: #16a34a;       /* Đã đủ 100% */
       --color-partial: #d97706;    /* Đang đến một phần */
       --color-none: #334155;       /* Chưa ai đến */
-      --color-na: #1e293b;         /* Bàn trống #N/A */
     }
 
     * {
@@ -31,7 +28,7 @@
     body {
       background-color: var(--bg);
       color: var(--text);
-      padding: 16px;
+      padding: 14px;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -40,10 +37,10 @@
 
     .container {
       width: 100%;
-      max-width: 1380px;
+      max-width: 1400px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
     }
 
     header {
@@ -51,27 +48,27 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
+      gap: 3px;
     }
 
     h1 {
-      font-size: 1.5rem;
+      font-size: 1.45rem;
       font-weight: 800;
       letter-spacing: 0.5px;
       color: #38bdf8;
       text-transform: uppercase;
     }
 
-    /* BẢNG ĐIỀU KHIỂN TỔNG QUAN HỘI TRƯỜNG */
+    /* BẢNG ĐIỀU KHIỂN TỔNG QUAN */
     .summary-card {
       background: var(--panel-bg);
       border-radius: 12px;
-      padding: 14px 20px;
+      padding: 12px 18px;
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-      gap: 12px;
+      gap: 10px;
       border: 1px solid var(--border);
-      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
     }
 
     .stat-item {
@@ -87,7 +84,7 @@
     }
 
     .stat-label {
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       color: var(--text-muted);
       font-weight: 600;
       text-transform: uppercase;
@@ -106,16 +103,15 @@
 
     /* KHU VỰC SÂN KHẤU */
     .stage-bar {
-      background: linear-gradient(90deg, #0369a1, #0284c7, #0369a1);
-      color: #fff;
+      background: linear-gradient(90deg, #0284c7, #38bdf8, #0284c7);
+      color: #0b1329;
       text-align: center;
-      padding: 10px;
+      padding: 9px;
       border-radius: 8px;
-      font-weight: 800;
-      font-size: 1.3rem;
-      letter-spacing: 4px;
-      box-shadow: 0 0 20px rgba(56, 189, 248, 0.35);
-      margin-top: 4px;
+      font-weight: 900;
+      font-size: 1.35rem;
+      letter-spacing: 6px;
+      box-shadow: 0 0 25px rgba(56, 189, 248, 0.4);
     }
 
     /* KHUNG SƠ ĐỒ LƯỚI BÀN THI */
@@ -123,14 +119,14 @@
       overflow-x: auto;
       background: var(--panel-bg);
       border-radius: 12px;
-      padding: 16px;
+      padding: 14px;
       border: 1px solid var(--border);
     }
 
     .hall-grid {
       display: grid;
       grid-template-columns: repeat(8, minmax(130px, 1fr));
-      gap: 10px;
+      gap: 9px;
       min-width: 1080px;
     }
 
@@ -141,7 +137,7 @@
     }
 
     .col-header {
-      background: #0284c7;
+      background: #0369a1;
       color: #fff;
       font-weight: 700;
       text-align: center;
@@ -150,41 +146,43 @@
       font-size: 0.9rem;
     }
 
-    /* CARD TỪNG BÀN THI */
+    /* THẺ TỪNG BÀN THI */
     .desk-card {
       background: #1e293b;
-      border: 2px solid var(--color-none);
+      border: 2px solid var(--border);
       border-radius: 8px;
-      padding: 8px 10px;
+      padding: 7px 9px;
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      transition: all 0.25s ease;
+      gap: 3px;
+      transition: all 0.3s ease;
       position: relative;
     }
 
     .desk-card.status-full {
       border-color: #22c55e;
-      background: rgba(34, 197, 94, 0.12);
+      background: rgba(34, 197, 94, 0.16);
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
     }
 
     .desk-card.status-partial {
       border-color: #f59e0b;
-      background: rgba(245, 158, 11, 0.12);
+      background: rgba(245, 158, 11, 0.16);
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
     }
 
     .desk-card.status-none {
-      border-color: #475569;
-      opacity: 0.85;
+      border-color: #334155;
+      opacity: 0.8;
     }
 
     .desk-card.status-na {
-      border-color: #334155;
-      background: #0f172a;
-      opacity: 0.35;
+      border-color: #1e293b;
+      background: #0b1329;
+      opacity: 0.3;
       justify-content: center;
       align-items: center;
-      min-height: 82px;
+      min-height: 72px;
     }
 
     .desk-top {
@@ -208,13 +206,13 @@
     .desk-mid {
       display: flex;
       justify-content: space-between;
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       margin-top: 2px;
     }
 
     .desk-badge-count {
-      background: #334155;
-      padding: 2px 6px;
+      background: #111c30;
+      padding: 2px 5px;
       border-radius: 4px;
       font-weight: 600;
     }
@@ -222,7 +220,6 @@
     .count-checked { color: #4ade80; }
     .count-missing { color: #f87171; }
 
-    /* Chú thích màu sắc */
     .legend-bar {
       display: flex;
       flex-wrap: wrap;
@@ -230,7 +227,7 @@
       gap: 16px;
       font-size: 0.85rem;
       color: var(--text-muted);
-      margin-top: 4px;
+      margin-top: 2px;
     }
 
     .legend-item {
@@ -251,6 +248,7 @@
       align-items: center;
       font-size: 0.8rem;
       color: var(--text-muted);
+      width: 100%;
     }
 
     .pulse {
@@ -261,12 +259,12 @@
       background: #22c55e;
       margin-right: 5px;
       box-shadow: 0 0 8px #22c55e;
-      animation: pulseAnim 1.5s infinite;
+      animation: pulseAnim 1.2s infinite;
     }
 
     @keyframes pulseAnim {
       0% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(1.2); }
+      50% { opacity: 0.3; transform: scale(1.3); }
       100% { opacity: 1; transform: scale(1); }
     }
   </style>
@@ -277,15 +275,15 @@
     <header>
       <h1>BẢNG TIẾN ĐỘ CHECK-IN THÍ SINH THEO SƠ ĐỒ BÀN</h1>
       <div class="live-status">
-        <span><span class="pulse"></span>Tự động cập nhật mỗi 10 giây</span>
-        <span id="lastSync">Đang tải dữ liệu...</span>
+        <span><span class="pulse"></span>Chế độ Realtime (Cập nhật mỗi 2 giây)</span>
+        <span id="lastSync">Đang kết nối Google Sheets...</span>
       </div>
     </header>
 
-    <!-- Ô TỔNG QUAN TIẾN ĐỘ HỘI TRƯỜNG -->
+    <!-- Ô TỔNG QUAN TIẾN ĐỘ -->
     <div class="summary-card">
       <div class="stat-item">
-        <span class="stat-label">Tổng người dự kiến</span>
+        <span class="stat-label">Tổng người trong hội trường</span>
         <span class="stat-val val-total" id="sumTotal">0</span>
       </div>
       <div class="stat-item">
@@ -305,37 +303,35 @@
     <!-- SÂN KHẤU -->
     <div class="stage-bar">S Â N   K H Ấ U</div>
 
-    <!-- BẢN ĐỒ BÀN THI (A ĐẾN H) -->
+    <!-- BẢN ĐỒ BÀN THI -->
     <div class="map-wrapper">
-      <div class="hall-grid" id="hallGrid">
-        <!-- Render động qua JavaScript -->
-      </div>
+      <div class="hall-grid" id="hallGrid"></div>
     </div>
 
-    <!-- CHÚ THÍCH TRẠNG THÁI -->
+    <!-- CHÚ THÍCH -->
     <div class="legend-bar">
       <div class="legend-item">
-        <div class="legend-box" style="border: 2px solid #22c55e; background: rgba(34, 197, 94, 0.2);"></div>
+        <div class="legend-box" style="border: 2px solid #22c55e; background: rgba(34, 197, 94, 0.25);"></div>
         <span>Đã đến đủ (100%)</span>
       </div>
       <div class="legend-item">
-        <div class="legend-box" style="border: 2px solid #f59e0b; background: rgba(245, 158, 11, 0.2);"></div>
+        <div class="legend-box" style="border: 2px solid #f59e0b; background: rgba(245, 158, 11, 0.25);"></div>
         <span>Đến một phần</span>
       </div>
       <div class="legend-item">
-        <div class="legend-box" style="border: 2px solid #475569; background: #1e293b;"></div>
+        <div class="legend-box" style="border: 2px solid #334155; background: #1e293b;"></div>
         <span>Chưa ai đến (0%)</span>
       </div>
       <div class="legend-item">
-        <div class="legend-box" style="background: #0f172a; border: 1px solid #334155;"></div>
+        <div class="legend-box" style="background: #0b1329; border: 1px solid #1e293b;"></div>
         <span>Bàn trống (#N/A)</span>
       </div>
     </div>
   </div>
 
   <script>
-    // ---------------- LINK GOOGLE SHEETS CSV CỦA BẠN ----------------
-    const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4sLZHFDwhiBdhJbQUkIAbNYSsWkx-zxMg6vc4QAMgJu4qW4tsi6vS4PbFys_0Kra681QuCOAQ-RR1/pub?output=csv";
+    // LINK WEB APP REALTIME (Đọc trực tiếp từ bộ nhớ Google Sheets)
+    const REALTIME_API_URL = "https://script.google.com/macros/s/AKfycbwyysUeK3wwmAqsiYKZQkE_PquC_NQBSvvjarmef_SJVgip5OYuLdAM3lMst2v9HpB5/exec?action=getData";
 
     // CẤU HÌNH SƠ ĐỒ CHUẨN 100% THEO ẢNH BẠN CUNG CẤP
     const HALL_LAYOUT = {
@@ -389,123 +385,116 @@
       ]
     };
 
-    // Chuẩn hóa mã số (bỏ số 0 thừa nếu có để so khớp chính xác: ví dụ 065 khớp với 65 hoặc 065)
+    // Chuẩn hóa mã số (bỏ số 0 ở đầu để khớp '044' và '44')
     function cleanCode(str) {
       if (!str) return "";
       str = str.toString().trim().toLowerCase();
-      // Bỏ số 0 ở đầu nếu toàn số (ví dụ '044' -> '44') để tránh lệch format giữa sheet và sơ đồ
       if (/^\d+$/.test(str)) {
         return parseInt(str, 10).toString();
       }
       return str;
     }
 
-    async function updateDashboard() {
-      if (!SHEET_CSV_URL) return;
+    let isFetching = false;
 
-      const urlWithCacheBuster = SHEET_CSV_URL + (SHEET_CSV_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
+    async function fetchRealtimeData() {
+      if (isFetching) return;
+      isFetching = true;
 
-      Papa.parse(urlWithCacheBuster, {
-        download: true,
-        header: true,
-        skipEmptyLines: true,
-        complete: function(results) {
-          // Gom nhóm thí sinh theo Vị Trí hoặc Đội Thi
-          // Map: key -> { total: 0, checked: 0 }
-          const teamStats = new Map();
-          const posStats = new Map();
+      try {
+        const url = REALTIME_API_URL + "&t=" + Date.now();
+        const response = await fetch(url);
+        const rows = await response.json();
 
-          let totalCandidates = 0;
-          let totalChecked = 0;
+        const teamStats = new Map();
+        const posStats = new Map();
 
-          results.data.forEach(row => {
-            const id = (row['Mã số'] || row['ID'] || '').trim();
-            if (!id) return;
+        let totalCandidates = 0;
+        let totalChecked = 0;
 
-            const pos = (row['Vị trí'] || row['ViTri'] || '').trim().toUpperCase();
-            const team = (row['Đội thi'] || row['PhongThi'] || row['Phòng thi'] || '').trim();
-            const status = (row['Trạng thái'] || '').trim();
-            const isChecked = (status === "Đã checkin" || status === "Đã điểm danh" || (row['Thời gian checkin'] || '').trim() !== "");
+        rows.forEach(row => {
+          const id = row.id;
+          if (!id) return;
 
-            totalCandidates++;
-            if (isChecked) totalChecked++;
+          const pos = row.pos ? row.pos.trim().toUpperCase() : "";
+          const team = row.team ? row.team.trim() : "";
+          const status = row.status ? row.status.trim() : "";
+          const isChecked = (status === "Đã checkin" || status === "Đã điểm danh" || (row.time && row.time.trim() !== ""));
 
-            // Thống kê theo Vị trí bàn (A01, B02...)
-            if (pos) {
-              if (!posStats.has(pos)) posStats.set(pos, { total: 0, checked: 0 });
-              const p = posStats.get(pos);
-              p.total++;
-              if (isChecked) p.checked++;
-            }
+          totalCandidates++;
+          if (isChecked) totalChecked++;
 
-            // Thống kê theo Mã đội (044, 637...)
-            if (team) {
-              const cTeam = cleanCode(team);
-              if (!teamStats.has(cTeam)) teamStats.set(cTeam, { total: 0, checked: 0 });
-              const t = teamStats.get(cTeam);
-              t.total++;
-              if (isChecked) t.checked++;
-            }
-          });
+          // Gom theo vị trí bàn (A01, B02...)
+          if (pos) {
+            if (!posStats.has(pos)) posStats.set(pos, { total: 0, checked: 0 });
+            const p = posStats.get(pos);
+            p.total++;
+            if (isChecked) p.checked++;
+          }
 
-          // CẬP NHẬT 4 Ô TỔNG QUAN
-          const totalMissing = totalCandidates - totalChecked;
-          const rate = totalCandidates > 0 ? Math.round((totalChecked / totalCandidates) * 100) : 0;
+          // Gom theo mã đội (044, 637...)
+          if (team) {
+            const cTeam = cleanCode(team);
+            if (!teamStats.has(cTeam)) teamStats.set(cTeam, { total: 0, checked: 0 });
+            const t = teamStats.get(cTeam);
+            t.total++;
+            if (isChecked) t.checked++;
+          }
+        });
 
-          document.getElementById("sumTotal").textContent = totalCandidates;
-          document.getElementById("sumChecked").textContent = totalChecked;
-          document.getElementById("sumMissing").textContent = totalMissing;
-          document.getElementById("sumRate").textContent = rate + "%";
+        // CẬP NHẬT 4 Ô TỔNG QUAN
+        const totalMissing = totalCandidates - totalChecked;
+        const rate = totalCandidates > 0 ? Math.round((totalChecked / totalCandidates) * 100) : 0;
 
-          const now = new Date();
-          document.getElementById("lastSync").textContent = "Cập nhật lúc: " + now.toLocaleTimeString('vi-VN');
+        document.getElementById("sumTotal").textContent = totalCandidates;
+        document.getElementById("sumChecked").textContent = totalChecked;
+        document.getElementById("sumMissing").textContent = totalMissing;
+        document.getElementById("sumRate").textContent = rate + "%";
 
-          // RENDER SƠ ĐỒ LƯỚI HỘI TRƯỜNG
-          renderHallMap(posStats, teamStats);
-        },
-        error: function(err) {
-          console.error("Lỗi tải Sheet:", err);
-          document.getElementById("lastSync").textContent = "Lỗi nạp dữ liệu!";
-        }
-      });
+        const now = new Date();
+        document.getElementById("lastSync").textContent = "Cập nhật lúc: " + now.toLocaleTimeString('vi-VN');
+
+        // CẬP NHẬT SƠ ĐỒ LƯỚI
+        renderHallMap(posStats, teamStats);
+
+      } catch (err) {
+        console.error("Lỗi cập nhật:", err);
+      } finally {
+        isFetching = false;
+      }
     }
 
     function renderHallMap(posStats, teamStats) {
       const hallContainer = document.getElementById("hallGrid");
       hallContainer.innerHTML = "";
 
-      // Duyệt qua 8 cột dãy: A, B, C, D, E, F, G, H
       for (const colKey of Object.keys(HALL_LAYOUT)) {
         const colDiv = document.createElement("div");
         colDiv.className = "hall-col";
 
-        // Tiêu đề dãy bàn
         const colHeader = document.createElement("div");
         colHeader.className = "col-header";
         colHeader.textContent = `DÃY ${colKey}`;
         colDiv.appendChild(colHeader);
 
-        // Duyệt danh sách bàn trong dãy
         HALL_LAYOUT[colKey].forEach(desk => {
           const deskCard = document.createElement("div");
 
           if (desk.team === "#N/A") {
-            // Bàn trống không sử dụng
             deskCard.className = "desk-card status-na";
             deskCard.innerHTML = `
               <div style="font-weight:700; color:#64748b;">${desk.pos}</div>
               <div style="font-size:0.75rem; color:#475569;">#N/A</div>
             `;
           } else {
-            // Lấy thông tin check-in: ưu tiên tra theo Mã Vị Trí, nếu chưa có thì tra theo Mã Đội
             const cTeam = cleanCode(desk.team);
+            // Khớp chính xác: thử tìm theo mã vị trí bàn trước (A01), nếu sheet chưa có thì tìm theo mã đội (637)
             const stat = posStats.get(desk.pos) || teamStats.get(cTeam) || { total: 0, checked: 0 };
             
             const total = stat.total;
             const checked = stat.checked;
             const missing = Math.max(0, total - checked);
 
-            // Xác định trạng thái màu sắc
             let statusClass = "status-none";
             if (total > 0) {
               if (checked === total) statusClass = "status-full";
@@ -534,10 +523,10 @@
       }
     }
 
-    // Khởi chạy ngay và tự động lặp lại mỗi 10 giây
+    // Tự động kéo dữ liệu mỗi 2 giây để đảm bảo Realtime ngay khi quét
     window.addEventListener("DOMContentLoaded", () => {
-      updateDashboard();
-      setInterval(updateDashboard, 10000);
+      fetchRealtimeData();
+      setInterval(fetchRealtimeData, 2000);
     });
   </script>
 </body>
