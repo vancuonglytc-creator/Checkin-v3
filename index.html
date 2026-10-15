@@ -173,6 +173,7 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       display: none;
       border-left: 6px solid var(--success);
+      transition: all 0.2s ease;
     }
 
     .result-card.active {
@@ -180,7 +181,15 @@
       animation: fadeIn 0.25s ease;
     }
 
-    .result-card.not-found { border-left-color: var(--error); }
+    .result-card.pending {
+      border-left-color: var(--warning);
+      background-color: #fffdf5;
+    }
+
+    .result-card.not-found { 
+      border-left-color: var(--error); 
+    }
+
     .result-card.already-checked { 
       border-left-color: var(--error);
       background-color: #fff5f5;
@@ -196,7 +205,14 @@
       gap: 8px;
     }
 
-    .result-card.not-found .result-title { color: var(--error); }
+    .result-card.pending .result-title { 
+      color: var(--warning); 
+    }
+
+    .result-card.not-found .result-title { 
+      color: var(--error); 
+    }
+
     .result-card.already-checked .result-title { 
       color: var(--error); 
       font-size: 1.1rem;
@@ -214,7 +230,7 @@
     .data-label { color: var(--text-muted); font-size: 0.88rem; }
     .data-val { font-weight: 600; font-size: 0.95rem; text-align: right; }
 
-    /* Điểm nhấn nổi bật cho Vị trí & Số dán */
+    /* Điểm nhấn nổi bật cho Vị trí & Team code */
     .highlight-position {
       color: #d97706;
       font-size: 1.05rem;
@@ -235,6 +251,11 @@
       font-weight: 700;
       background: #dcfce7;
       color: #15803d;
+    }
+
+    .badge-status.warning {
+      background: #fef3c7;
+      color: #b45309;
     }
 
     .badge-status.danger {
@@ -292,7 +313,7 @@
       <button class="btn-ctrl btn-reload" onclick="loadDataFromSheets()">Làm mới Sheet</button>
     </div>
 
-    <!-- KHỐI KẾT QUẢ CHECK-IN ĐÃ ĐƯỢC CẬP NHẬT THEO CẤU TRÚC MỚI -->
+    <!-- KHỐI KẾT QUẢ CHECK-IN -->
     <div id="resultCard" class="result-card">
       <div class="result-title" id="resHeader">
         <span>✓</span> Check-in thành công
@@ -337,7 +358,6 @@
 
   <script>
     // ---------------- CẤU HÌNH LIÊN KẾT GOOGLE SHEETS & APPS SCRIPT ----------------
-    // Link CSV xuất bản riêng cho sheet "Diem danh Tong ket"
     const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4sLZHFDwhiBdhJbQUkIAbNYSsWkx-zxMg6vc4QAMgJu4qW4tsi6vS4PbFys_0Kra681QuCOAQ-RR1/pub?output=csv";
     const CHECKIN_API_URL = "https://script.google.com/macros/s/AKfycbwyysUeK3wwmAqsiYKZQkE_PquC_NQBSvvjarmef_SJVgip5OYuLdAM3lMst2v9HpB5/exec";
 
@@ -393,13 +413,13 @@
       });
     }
 
-    // 2. GỬI YÊU CẦU CHECK-IN LÊN GOOGLE SHEETS & XỬ LÝ CẢNH BÁO TRÙNG
+    // 2. GỬI YÊU CẦU CHECK-IN LÊN GOOGLE SHEETS
     async function sendCheckinToGoogleSheet(candidate) {
       const card = document.getElementById("resultCard");
       const header = document.getElementById("resHeader");
       const statusSpan = document.getElementById("resStatus");
 
-      // Kiểm tra tại bộ nhớ Local trước
+      // Nếu đã check-in từ trước (kiểm tra local)
       if (candidate.checked) {
         card.className = "result-card active already-checked";
         header.innerHTML = "<span>⚠️</span> Thí sinh đã điểm danh trước đó";
@@ -407,7 +427,10 @@
         return;
       }
 
-      statusSpan.innerHTML = `<span style="color:#64748b;">Đang lưu vào Sheet...</span>`;
+      // TRONG KHI ĐANG LƯU VÀO HỆ THỐNG: HIỂN THỊ THÔNG BÁO CHỜ RÕ RÀNG
+      card.className = "result-card active pending";
+      header.innerHTML = "<span>⏳</span> Đang lưu lịch sử checkin vào hệ thống!";
+      statusSpan.innerHTML = `<span class="badge-status warning">Đang ghi nhận...</span>`;
 
       if (!CHECKIN_API_URL.trim()) {
         statusSpan.innerHTML = `<span style="color:red;'>Chưa cấu hình API URL!</span>`;
@@ -421,14 +444,14 @@
 
         if (result.success) {
           if (result.alreadyChecked) {
-            // Đã check-in trước đó -> Báo đỏ & Không đổi thời gian
+            // Trường hợp trên Sheets phát hiện đã check-in trước đó
             candidate.checked = true;
             candidate.checkinTime = result.checkinTime;
             card.className = "result-card active already-checked";
             header.innerHTML = "<span>⚠️</span> Thí sinh đã điểm danh trước đó";
             statusSpan.innerHTML = `<span class="badge-status danger">Đã check-in (${result.checkinTime})</span>`;
           } else {
-            // Lần đầu check-in thành công -> Báo xanh
+            // Lần đầu check-in thành công
             candidate.checked = true;
             candidate.checkinTime = result.checkinTime;
             card.className = "result-card active";
@@ -436,195 +459,15 @@
             statusSpan.innerHTML = `<span class="badge-status">Đã ghi nhận (${result.checkinTime})</span>`;
           }
         } else {
-          statusSpan.innerHTML = `<span style="color:red;">${result.message}</span>`;
+          // Báo lỗi thực sự từ phía Server trả về nếu không có ID
+          card.className = "result-card active not-found";
+          header.innerHTML = "<span>✕</span> " + (result.message || "Không thể ghi nhận check-in!");
+          statusSpan.innerHTML = `<span style="color:red;">Lỗi cập nhật</span>`;
         }
       } catch (err) {
+        // Dự phòng nếu gặp chặn CORS hoặc timeout nhưng request vẫn tới được Apps Script
         const now = new Date();
         const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         candidate.checked = true;
         candidate.checkinTime = timeStr;
-        statusSpan.innerHTML = `<span class="badge-status">Đã ghi nhận (${timeStr})</span>`;
-      }
-    }
-
-    // 3. XỬ LÝ MÃ CHUNG (CHO CẢ CAMERA, SÚNG QUÉT VÀ NHẬP TAY)
-    function processCandidateCode(rawCode) {
-      let code = rawCode.trim();
-      if (!code) return;
-
-      if (code.startsWith("{") && code.endsWith("}")) {
-        try {
-          const parsed = JSON.parse(code);
-          code = parsed.id || parsed.code || parsed.maso || code;
-        } catch (e) {}
-      } else if (code.includes("|")) {
-        const parts = code.split("|").map(s => s.trim());
-        if (parts.length >= 2) {
-          code = parts[1];
-        }
-      }
-
-      if (code === lastProcessedCode) return;
-      lastProcessedCode = code;
-      setTimeout(() => { lastProcessedCode = null; }, 1500);
-
-      if (navigator.vibrate) navigator.vibrate(100);
-
-      const card = document.getElementById("resultCard");
-      const header = document.getElementById("resHeader");
-      const rawEl = document.getElementById("resRaw");
-
-      rawEl.textContent = `Nội dung nhận diện: ${code}`;
-      card.className = "result-card active";
-
-      const found = candidateMap.get(code.toLowerCase());
-
-      if (found) {
-        // Xuất 7 trường dữ liệu theo đúng yêu cầu
-        document.getElementById("resTeamCode").textContent = found.teamCode;
-        document.getElementById("resTeam").textContent = found.team;
-        document.getElementById("resSoDan").textContent = found.soDan;
-        document.getElementById("resViTriGhe").textContent = found.viTriGhe;
-        document.getElementById("resName").textContent = found.name;
-        document.getElementById("resField").textContent = found.field;
-        document.getElementById("dataFields").style.display = "block";
-
-        sendCheckinToGoogleSheet(found);
-      } else {
-        card.className = "result-card active not-found";
-        header.innerHTML = "<span>✕</span> Đang lưu lịch sử checkin!";
-        document.getElementById("resTeamCode").textContent = "--";
-        document.getElementById("resTeam").textContent = "--";
-        document.getElementById("resSoDan").textContent = "--";
-        document.getElementById("resViTriGhe").textContent = "--";
-        document.getElementById("resName").textContent = "Không có trong danh sách";
-        document.getElementById("resField").textContent = "--";
-        document.getElementById("resStatus").innerHTML = `<span style="color:red;">Không thể check-in</span>`;
-      }
-    }
-
-    // 4. XỬ LÝ KHI NHẬP TAY
-    function handleManualSubmit(e) {
-      e.preventDefault();
-      const input = document.getElementById("manualCodeInput");
-      processCandidateCode(input.value);
-      input.value = "";
-      input.focus();
-    }
-
-    // 5. TỰ ĐỘNG BẮT TÍN HIỆU TỪ SÚNG QUÉT MÃ VẠCH / QR USB
-    let barcodeBuffer = "";
-    let lastKeyTime = Date.now();
-
-    window.addEventListener("keydown", (e) => {
-      if (document.activeElement === document.getElementById("manualCodeInput")) return;
-
-      const currentTime = Date.now();
-      if (currentTime - lastKeyTime > 80) {
-        barcodeBuffer = "";
-      }
-      lastKeyTime = currentTime;
-
-      if (e.key === "Enter") {
-        if (barcodeBuffer.length >= 2) {
-          processCandidateCode(barcodeBuffer);
-          barcodeBuffer = "";
-        }
-      } else if (e.key.length === 1) {
-        barcodeBuffer += e.key;
-      }
-    });
-
-    // 6. KHỞI ĐỘNG CAMERA/WEBCAM TƯƠNG THÍCH MỌI THIẾT BỊ
-    async function startScanner() {
-      if (isScanning || isStarting) return;
-
-      const btnStart = document.getElementById("btnStart");
-      const btnStop = document.getElementById("btnStop");
-      
-      isStarting = true;
-      btnStart.disabled = true;
-
-      try {
-        if (!html5QrCode) {
-          const formatsToSupport = [
-            Html5QrcodeSupportedFormats.QR_CODE,
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.CODE_39,
-            Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.EAN_8,
-            Html5QrcodeSupportedFormats.UPC_A,
-            Html5QrcodeSupportedFormats.UPC_E,
-            Html5QrcodeSupportedFormats.ITF
-          ];
-
-          html5QrCode = new Html5Qrcode("reader", { 
-            formatsToSupport: formatsToSupport,
-            verbose: false 
-          });
-        }
-
-        const config = { 
-          fps: 10,
-          qrbox: function(viewfinderWidth, viewfinderHeight) {
-            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-            return {
-              width: Math.floor(viewfinderWidth * 0.85),
-              height: Math.floor(minEdge * 0.6)
-            };
-          }
-        };
-
-        const cameraConfig = { facingMode: "environment" };
-
-        await html5QrCode.start(
-          cameraConfig, 
-          config, 
-          (decodedText) => processCandidateCode(decodedText)
-        ).catch(async (err) => {
-          console.warn("Thử chuyển về webcam mặc định...", err);
-          const devices = await Html5Qrcode.getCameras();
-          if (devices && devices.length > 0) {
-            await html5QrCode.start(
-              devices[0].id,
-              config,
-              (decodedText) => processCandidateCode(decodedText)
-            );
-          } else {
-            throw err;
-          }
-        });
-        
-        isScanning = true;
-        btnStop.disabled = false;
-      } catch (err) {
-        console.error(err);
-        alert("Không thể khởi động Camera/Webcam.\nNguyên nhân: Webcam đang bị ứng dụng khác chiếm dụng hoặc chưa cấp quyền.\nChi tiết lỗi: " + (err.message || err));
-        btnStart.disabled = false;
-        isScanning = false;
-      } finally {
-        isStarting = false;
-      }
-    }
-
-    // 7. TẮT CAMERA
-    async function stopScanner() {
-      if (html5QrCode && isScanning) {
-        try {
-          await html5QrCode.stop();
-        } catch (e) {
-          console.error(e);
-        }
-        document.getElementById("btnStart").disabled = false;
-        document.getElementById("btnStop").disabled = true;
-        isScanning = false;
-      }
-    }
-
-    window.addEventListener("DOMContentLoaded", () => {
-      loadDataFromSheets();
-      document.getElementById("manualCodeInput").focus();
-    });
-  </script>
-</body>
-</html>
+        card.className = "
