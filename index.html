@@ -214,9 +214,15 @@
     .data-label { color: var(--text-muted); font-size: 0.88rem; }
     .data-val { font-weight: 600; font-size: 0.95rem; text-align: right; }
 
-    /* Điểm nhấn nổi bật cho Vị trí */
+    /* Điểm nhấn nổi bật cho Vị trí & Số dán */
     .highlight-position {
       color: #d97706;
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
+    .highlight-teamcode {
+      color: #2563eb;
       font-size: 1.05rem;
       font-weight: 700;
     }
@@ -286,7 +292,7 @@
       <button class="btn-ctrl btn-reload" onclick="loadDataFromSheets()">Làm mới Sheet</button>
     </div>
 
-    <!-- KHỐI KẾT QUẢ CHECK-IN -->
+    <!-- KHỐI KẾT QUẢ CHECK-IN ĐÃ ĐƯỢC CẬP NHẬT THEO CẤU TRÚC MỚI -->
     <div id="resultCard" class="result-card">
       <div class="result-title" id="resHeader">
         <span>✓</span> Check-in thành công
@@ -294,25 +300,28 @@
       
       <div id="dataFields">
         <div class="data-row">
-          <span class="data-label">Mã số</span>
-          <span class="data-val" id="resId">--</span>
+          <span class="data-label">Team code</span>
+          <span class="data-val highlight-teamcode" id="resTeamCode">--</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Đội thi</span>
+          <span class="data-val" id="resTeam">--</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Số dán</span>
+          <span class="data-val highlight-position" id="resSoDan">--</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Vị trí ghế</span>
+          <span class="data-val highlight-position" id="resViTriGhe">--</span>
         </div>
         <div class="data-row">
           <span class="data-label">Họ và tên</span>
           <span class="data-val" id="resName">--</span>
         </div>
         <div class="data-row">
-          <span class="data-label">Đội thi</span>
-          <span class="data-val" id="resRoom">--</span>
-        </div>
-        <div class="data-row">
           <span class="data-label">Bảng thi</span>
           <span class="data-val" id="resField">--</span>
-        </div>
-        <!-- DÒNG VỊ TRÍ ĐÃ ĐƯỢC BỔ SUNG -->
-        <div class="data-row">
-          <span class="data-label">Vị trí</span>
-          <span class="data-val highlight-position" id="resPosition">--</span>
         </div>
         <div class="data-row">
           <span class="data-label">Trạng thái</span>
@@ -328,6 +337,7 @@
 
   <script>
     // ---------------- CẤU HÌNH LIÊN KẾT GOOGLE SHEETS & APPS SCRIPT ----------------
+    // Link CSV xuất bản riêng cho sheet "Diem danh Tong ket"
     const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4sLZHFDwhiBdhJbQUkIAbNYSsWkx-zxMg6vc4QAMgJu4qW4tsi6vS4PbFys_0Kra681QuCOAQ-RR1/pub?output=csv";
     const CHECKIN_API_URL = "https://script.google.com/macros/s/AKfycbwyysUeK3wwmAqsiYKZQkE_PquC_NQBSvvjarmef_SJVgip5OYuLdAM3lMst2v9HpB5/exec";
 
@@ -337,7 +347,7 @@
     let isStarting = false;
     let lastProcessedCode = null;
 
-    // 1. TẢI DANH SÁCH DỮ LIỆU TỪ GOOGLE SHEETS (ĐÃ BỔ SUNG CỘT VỊ TRÍ)
+    // 1. TẢI DỮ LIỆU TỪ SHEET "Diem danh Tong ket"
     async function loadDataFromSheets() {
       const statusEl = document.getElementById("dbStatus");
       if (!SHEET_CSV_URL.trim()) {
@@ -345,7 +355,7 @@
         return;
       }
 
-      statusEl.textContent = "Đang đồng bộ danh sách thí sinh...";
+      statusEl.textContent = "Đang đồng bộ danh sách tổng kết...";
       const urlWithBuster = SHEET_CSV_URL + (SHEET_CSV_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
 
       Papa.parse(urlWithBuster, {
@@ -362,16 +372,18 @@
 
               candidateMap.set(id.toLowerCase(), {
                 id: id,
+                teamCode: row['Team code'] || row['Team Code'] || '--',
+                soDan: row['Số dán'] || row['SoDan'] || '--',
+                viTriGhe: row['Vị trí ghế'] || row['ViTriGhe'] || row['Vị trí'] || '--',
                 name: row['Họ và tên'] || row['HoTen'] || 'Chưa cập nhật',
-                room: row['Đội thi'] || row['PhongThi'] || row['Phòng thi'] || 'Chưa xếp phòng',
-                field: row['Bảng thi'] || row['Lĩnh vực thi'] || row['LinhVuc'] || 'Chưa xếp lĩnh vực',
-                position: row['Vị trí'] || row['ViTri'] || 'Chưa xếp vị trí', // Đọc cột Vị trí
+                team: row['Đội thi'] || row['DoiThi'] || '--',
+                field: row['Bảng thi'] || row['BangThi'] || '--',
                 checked: (status === "Đã checkin" || status === "Đã điểm danh" || time !== ""),
                 checkinTime: time
               });
             }
           });
-          statusEl.textContent = `Đã đồng bộ ${candidateMap.size} thí sinh`;
+          statusEl.textContent = `Đã đồng bộ ${candidateMap.size} thí sinh (Sheet: Diem danh Tong ket)`;
           statusEl.style.color = "#16a34a";
         },
         error: function() {
@@ -381,17 +393,17 @@
       });
     }
 
-    // 2. GỬI YÊU CẦU KIỂM TRA & CẬP NHẬT TRẠNG THÁI LÊN GOOGLE SHEETS
+    // 2. GỬI YÊU CẦU CHECK-IN LÊN GOOGLE SHEETS & XỬ LÝ CẢNH BÁO TRÙNG
     async function sendCheckinToGoogleSheet(candidate) {
       const card = document.getElementById("resultCard");
       const header = document.getElementById("resHeader");
       const statusSpan = document.getElementById("resStatus");
 
-      // KIỂM TRA NHANH TẠI BỘ NHỚ LOCAL: Nếu thí sinh đã check-in từ trước
+      // Kiểm tra tại bộ nhớ Local trước
       if (candidate.checked) {
         card.className = "result-card active already-checked";
         header.innerHTML = "<span>⚠️</span> Thí sinh đã điểm danh trước đó";
-        statusSpan.innerHTML = `<span class="badge-status danger">Đã điểm danh (${candidate.checkinTime || "trước đó"})</span>`;
+        statusSpan.innerHTML = `<span class="badge-status danger">Đã check-in (${candidate.checkinTime || "trước đó"})</span>`;
         return;
       }
 
@@ -409,12 +421,14 @@
 
         if (result.success) {
           if (result.alreadyChecked) {
+            // Đã check-in trước đó -> Báo đỏ & Không đổi thời gian
             candidate.checked = true;
             candidate.checkinTime = result.checkinTime;
             card.className = "result-card active already-checked";
             header.innerHTML = "<span>⚠️</span> Thí sinh đã điểm danh trước đó";
-            statusSpan.innerHTML = `<span class="badge-status danger">Đã điểm danh (${result.checkinTime})</span>`;
+            statusSpan.innerHTML = `<span class="badge-status danger">Đã check-in (${result.checkinTime})</span>`;
           } else {
+            // Lần đầu check-in thành công -> Báo xanh
             candidate.checked = true;
             candidate.checkinTime = result.checkinTime;
             card.className = "result-card active";
@@ -466,22 +480,25 @@
       const found = candidateMap.get(code.toLowerCase());
 
       if (found) {
-        document.getElementById("resId").textContent = found.id;
+        // Xuất 7 trường dữ liệu theo đúng yêu cầu
+        document.getElementById("resTeamCode").textContent = found.teamCode;
+        document.getElementById("resTeam").textContent = found.team;
+        document.getElementById("resSoDan").textContent = found.soDan;
+        document.getElementById("resViTriGhe").textContent = found.viTriGhe;
         document.getElementById("resName").textContent = found.name;
-        document.getElementById("resRoom").textContent = found.room;
         document.getElementById("resField").textContent = found.field;
-        document.getElementById("resPosition").textContent = found.position; // Hiển thị Vị trí
         document.getElementById("dataFields").style.display = "block";
 
         sendCheckinToGoogleSheet(found);
       } else {
         card.className = "result-card active not-found";
         header.innerHTML = "<span>✕</span> Không tìm thấy thí sinh!";
-        document.getElementById("resId").textContent = code;
+        document.getElementById("resTeamCode").textContent = "--";
+        document.getElementById("resTeam").textContent = "--";
+        document.getElementById("resSoDan").textContent = "--";
+        document.getElementById("resViTriGhe").textContent = "--";
         document.getElementById("resName").textContent = "Không có trong danh sách";
-        document.getElementById("resRoom").textContent = "--";
         document.getElementById("resField").textContent = "--";
-        document.getElementById("resPosition").textContent = "--";
         document.getElementById("resStatus").innerHTML = `<span style="color:red;">Không thể check-in</span>`;
       }
     }
@@ -518,7 +535,7 @@
       }
     });
 
-    // 6. KHỞI ĐỘNG CAMERA/WEBCAM LINH HOẠT VÀ TƯƠNG THÍCH MỌI THIẾT BỊ
+    // 6. KHỞI ĐỘNG CAMERA/WEBCAM TƯƠNG THÍCH MỌI THIẾT BỊ
     async function startScanner() {
       if (isScanning || isStarting) return;
 
