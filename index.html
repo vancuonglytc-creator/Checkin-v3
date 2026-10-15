@@ -63,6 +63,7 @@
       font-size: 0.85rem;
       color: var(--text-muted);
       margin-top: 4px;
+      font-weight: 500;
     }
 
     /* Khung nhập tay & súng bắn mã vạch */
@@ -230,7 +231,6 @@
     .data-label { color: var(--text-muted); font-size: 0.88rem; }
     .data-val { font-weight: 600; font-size: 0.95rem; text-align: right; }
 
-    /* Điểm nhấn nổi bật cho Vị trí & Team code */
     .highlight-position {
       color: #d97706;
       font-size: 1.05rem;
@@ -367,107 +367,81 @@
     let isStarting = false;
     let lastProcessedCode = null;
 
-    // 1. TẢI DỮ LIỆU TỪ SHEET "Diem danh Tong ket"
+    // 1. TẢI DỮ LIỆU: ƯU TIÊN ĐỌC QUA APPS SCRIPT TRỰC TIẾP TỪ SHEET "Diem danh Tong ket"
     async function loadDataFromSheets() {
       const statusEl = document.getElementById("dbStatus");
-      if (!SHEET_CSV_URL.trim()) {
-        statusEl.innerHTML = "<b style='color:red;'>Chưa cấu hình URL CSV!</b>";
-        return;
-      }
-
       statusEl.textContent = "Đang đồng bộ danh sách tổng kết...";
-      const urlWithBuster = SHEET_CSV_URL + (SHEET_CSV_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
+      statusEl.style.color = "#64748b";
 
-      Papa.parse(urlWithBuster, {
-        download: true,
-        header: true,
-        skipEmptyLines: true,
-        complete: function(results) {
-          candidateMap.clear();
-          results.data.forEach(row => {
-            const id = (row['Mã số'] || row['ID'] || row['MaSo'] || '').trim();
-            if (id) {
-              const status = (row['Trạng thái'] || '').trim();
-              const time = (row['Thời gian checkin'] || row['Thời gian'] || '').trim();
+      // CÁCH 1: Gọi API action=getData đọc trực tiếp từ sheet chỉ định
+      if (CHECKIN_API_URL.trim()) {
+        try {
+          const res = await fetch(`${CHECKIN_API_URL}?action=getData&t=${Date.now()}`);
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows.length > 0) {
+            candidateMap.clear();
+            rows.forEach(r => {
+              if (r.id) {
+                const isChecked = (r.status === "Đã checkin" || r.status === "Đã điểm danh" || (r.time && r.time.trim() !== ""));
+                candidateMap.set(r.id.toString().trim().toLowerCase(), {
+                  id: r.id.toString().trim(),
+                  teamCode: r.teamCode || '--',
+                  soDan: r.soDan || '--',
+                  viTriGhe: r.viTriGhe || '--',
+                  name: r.name || 'Chưa cập nhật',
+                  team: r.team || '--',
+                  field: r.field || '--',
+                  checked: isChecked,
+                  checkinTime: r.time || ''
+                });
+              }
+            });
 
-              candidateMap.set(id.toLowerCase(), {
-                id: id,
-                teamCode: row['Team code'] || row['Team Code'] || '--',
-                soDan: row['Số dán'] || row['SoDan'] || '--',
-                viTriGhe: row['Vị trí ghế'] || row['ViTriGhe'] || row['Vị trí'] || '--',
-                name: row['Họ và tên'] || row['HoTen'] || 'Chưa cập nhật',
-                team: row['Đội thi'] || row['DoiThi'] || '--',
-                field: row['Bảng thi'] || row['BangThi'] || '--',
-                checked: (status === "Đã checkin" || status === "Đã điểm danh" || time !== ""),
-                checkinTime: time
-              });
-            }
-          });
-          statusEl.textContent = `Đã đồng bộ ${candidateMap.size} thí sinh (Sheet: Diem danh Tong ket)`;
-          statusEl.style.color = "#16a34a";
-        },
-        error: function() {
-          statusEl.textContent = "Lỗi khi tải dữ liệu Sheets!";
-          statusEl.style.color = "#dc2626";
-        }
-      });
-    }
-
-    // 2. GỬI YÊU CẦU CHECK-IN LÊN GOOGLE SHEETS
-    async function sendCheckinToGoogleSheet(candidate) {
-      const card = document.getElementById("resultCard");
-      const header = document.getElementById("resHeader");
-      const statusSpan = document.getElementById("resStatus");
-
-      // Nếu đã check-in từ trước (kiểm tra local)
-      if (candidate.checked) {
-        card.className = "result-card active already-checked";
-        header.innerHTML = "<span>⚠️</span> Thí sinh đã điểm danh trước đó";
-        statusSpan.innerHTML = `<span class="badge-status danger">Đã check-in (${candidate.checkinTime || "trước đó"})</span>`;
-        return;
-      }
-
-      // TRONG KHI ĐANG LƯU VÀO HỆ THỐNG: HIỂN THỊ THÔNG BÁO CHỜ RÕ RÀNG
-      card.className = "result-card active pending";
-      header.innerHTML = "<span>⏳</span> Đang lưu lịch sử checkin vào hệ thống!";
-      statusSpan.innerHTML = `<span class="badge-status warning">Đang ghi nhận...</span>`;
-
-      if (!CHECKIN_API_URL.trim()) {
-        statusSpan.innerHTML = `<span style="color:red;'>Chưa cấu hình API URL!</span>`;
-        return;
-      }
-
-      try {
-        const apiUrl = `${CHECKIN_API_URL}?id=${encodeURIComponent(candidate.id)}&t=${Date.now()}`;
-        const response = await fetch(apiUrl);
-        const result = await response.json();
-
-        if (result.success) {
-          if (result.alreadyChecked) {
-            // Trường hợp trên Sheets phát hiện đã check-in trước đó
-            candidate.checked = true;
-            candidate.checkinTime = result.checkinTime;
-            card.className = "result-card active already-checked";
-            header.innerHTML = "<span>⚠️</span> Thí sinh đã điểm danh trước đó";
-            statusSpan.innerHTML = `<span class="badge-status danger">Đã check-in (${result.checkinTime})</span>`;
-          } else {
-            // Lần đầu check-in thành công
-            candidate.checked = true;
-            candidate.checkinTime = result.checkinTime;
-            card.className = "result-card active";
-            header.innerHTML = "<span>✓</span> Check-in thành công";
-            statusSpan.innerHTML = `<span class="badge-status">Đã ghi nhận (${result.checkinTime})</span>`;
+            statusEl.textContent = `Đã đồng bộ ${candidateMap.size} thí sinh (Sheet: Diem danh Tong ket)`;
+            statusEl.style.color = "#16a34a";
+            return;
           }
-        } else {
-          // Báo lỗi thực sự từ phía Server trả về nếu không có ID
-          card.className = "result-card active not-found";
-          header.innerHTML = "<span>✕</span> " + (result.message || "Không thể ghi nhận check-in!");
-          statusSpan.innerHTML = `<span style="color:red;">Lỗi cập nhật</span>`;
+        } catch (apiErr) {
+          console.warn("Không thể tải qua API, chuyển sang tải CSV dự phòng:", apiErr);
         }
-      } catch (err) {
-        // Dự phòng nếu gặp chặn CORS hoặc timeout nhưng request vẫn tới được Apps Script
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        candidate.checked = true;
-        candidate.checkinTime = timeStr;
-        card.className = "
+      }
+
+      // CÁCH 2: DỰ PHÒNG QUA LINK CSV
+      if (SHEET_CSV_URL.trim()) {
+        const urlWithBuster = SHEET_CSV_URL + (SHEET_CSV_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
+        Papa.parse(urlWithBuster, {
+          download: true,
+          header: true,
+          skipEmptyLines: true,
+          complete: function(results) {
+            candidateMap.clear();
+            results.data.forEach(row => {
+              // Tìm trường Mã số bất kể cách viết hoa/thường
+              const idKey = Object.keys(row).find(k => k.trim().toLowerCase() === 'mã số' || k.trim().toLowerCase() === 'id' || k.trim().toLowerCase() === 'maso');
+              const id = idKey ? row[idKey].trim() : '';
+
+              if (id) {
+                const getVal = (possibleKeys) => {
+                  const key = Object.keys(row).find(k => possibleKeys.includes(k.trim().toLowerCase()));
+                  return key ? row[key].trim() : '';
+                };
+
+                const status = getVal(['trạng thái', 'trangthai']);
+                const time = getVal(['thời gian checkin', 'thời gian', 'thoigian']);
+
+                candidateMap.set(id.toLowerCase(), {
+                  id: id,
+                  teamCode: getVal(['team code', 'teamcode']) || '--',
+                  soDan: getVal(['số dán', 'sodan']) || '--',
+                  viTriGhe: getVal(['vị trí ghế', 'vitrighe', 'vị trí']) || '--',
+                  name: getVal(['họ và tên', 'hoten']) || 'Chưa cập nhật',
+                  team: getVal(['đội thi', 'doithi']) || '--',
+                  field: getVal(['bảng thi', 'bangthi']) || '--',
+                  checked: (status === "Đã checkin" || status === "Đã điểm danh" || time !== ""),
+                  checkinTime: time
+                });
+              }
+            });
+
+            if (candidateMap.size > 0) {
+              statusEl.textContent =
