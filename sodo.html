@@ -266,4 +266,226 @@
     
     <!-- CỘT 1: THÍ SINH VỪA ĐIỂM DANH -->
     <div class="panel panel-left">
-      <div class="panel
+      <div class="panel-header">
+        <h2 class="panel-title">Thí sinh vừa điểm danh</h2>
+      </div>
+
+      <div id="welcomeContent" class="welcome-card" style="display: none;">
+        <div class="welcome-group">
+          <span class="welcome-label">Họ và tên</span>
+          <div class="val-name" id="viewName">--</div>
+        </div>
+
+        <div class="welcome-group">
+          <span class="welcome-label">Đội thi</span>
+          <div class="val-team" id="viewTeam">--</div>
+        </div>
+
+        <div class="welcome-group">
+          <span class="welcome-label">Vị trí chỗ ngồi</span>
+          <div class="seat-badge-wrapper">
+            <span class="val-seat" id="viewSeat">--</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="welcomeEmpty" class="empty-state">
+        <span>Đang chờ thí sinh điểm danh...</span>
+      </div>
+    </div>
+
+    <!-- CỘT 2: DANH SÁCH ĐÃ ĐIỂM DANH -->
+    <div class="panel panel-right">
+      <div class="panel-header">
+        <h2 class="panel-title">Danh sách thí sinh đã điểm danh</h2>
+      </div>
+      
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 15%;">Mã số</th>
+              <th style="width: 33%; text-align: left; padding-left: 16px;">Họ và tên</th>
+              <th style="width: 25%;">Đội thi</th>
+              <th style="width: 27%;">Vị trí chỗ ngồi</th>
+            </tr>
+          </thead>
+          <tbody id="checkedTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="live-status">
+    <div class="pulse-dot"></div>
+    <span id="syncText">Đang kết nối dữ liệu...</span>
+  </div>
+
+  <script>
+    const CHECKIN_API_URL = "https://script.google.com/macros/s/AKfycbwyysUeK3wwmAqsiYKZQkE_PquC_NQBSvvjarmef_SJVgip5OYuLdAM3lMst2v9HpB5/exec";
+
+    function formatSeat(day, hang, ghe) {
+      let parts = [];
+      if (day && day !== "--") parts.push(`Dãy ${day}`);
+      if (hang && hang !== "--") parts.push(`Hàng ${hang}`);
+      if (ghe && ghe !== "--") parts.push(`Ghế ${ghe}`);
+      return parts.length > 0 ? parts.join(" ") : "--";
+    }
+
+    // TẢI DỮ LIỆU QUA JSONP KHÔNG BAO GIỜ BỊ CHẶN BỞI CORS
+    function loadDataJsonp() {
+      return new Promise((resolve, reject) => {
+        const callbackName = 'jsonp_welcome_cb_' + Math.floor(Math.random() * 1000000);
+        const script = document.createElement('script');
+        
+        const timer = setTimeout(() => {
+          cleanup();
+          reject(new Error("Timeout khi kết nối Sheets"));
+        }, 8000);
+
+        window[callbackName] = function(data) {
+          clearTimeout(timer);
+          cleanup();
+          resolve(data);
+        };
+
+        script.onerror = function() {
+          clearTimeout(timer);
+          cleanup();
+          reject(new Error("Lỗi tải qua JSONP"));
+        };
+
+        function cleanup() {
+          delete window[callbackName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+        }
+
+        script.src = `${CHECKIN_API_URL}?action=getData&callback=${callbackName}&t=${Date.now()}`;
+        document.body.appendChild(script);
+      });
+    }
+
+    let knownCheckedIds = new Set();
+    let displayQueue = [];
+    let isShowingQueue = false;
+    let fullCheckedList = [];
+    let isInitialLoad = true;
+
+    async function syncData() {
+      try {
+        const rows = await loadDataJsonp();
+
+        if (Array.isArray(rows)) {
+          // Lọc danh sách thí sinh đã check-in
+          const checkedCandidates = rows.filter(r => 
+            r.status === "Đã checkin" || r.status === "Đã điểm danh" || (r.time && r.time.trim() !== "")
+          );
+
+          if (isInitialLoad) {
+            // Lần đầu tải trang: Đổ ngay toàn bộ người đã check-in trước đó vào bảng bên phải
+            checkedCandidates.forEach(candidate => {
+              const id = candidate.id.toString().trim().toLowerCase();
+              knownCheckedIds.add(id);
+
+              fullCheckedList.push({
+                id: candidate.id,
+                name: candidate.name,
+                team: candidate.team,
+                seat: formatSeat(candidate.day, candidate.hang, candidate.ghe),
+                time: candidate.time || ""
+              });
+            });
+
+            renderRightTable();
+            isInitialLoad = false;
+          } else {
+            // Các lần quét tiếp theo: Phát hiện người mới vừa check-in
+            checkedCandidates.forEach(candidate => {
+              const id = candidate.id.toString().trim().toLowerCase();
+              if (!knownCheckedIds.has(id)) {
+                knownCheckedIds.add(id);
+
+                const formattedCandidate = {
+                  id: candidate.id,
+                  name: candidate.name,
+                  team: candidate.team,
+                  seat: formatSeat(candidate.day, candidate.hang, candidate.ghe),
+                  time: candidate.time || ""
+                };
+
+                // Đưa lên đầu bảng bên phải
+                fullCheckedList.unshift(formattedCandidate);
+                // Đưa vào hàng đợi chiếu 5s ở cột trái
+                displayQueue.push(formattedCandidate);
+              }
+            });
+
+            renderRightTable();
+
+            if (displayQueue.length > 0 && !isShowingQueue) {
+              processDisplayQueue();
+            }
+          }
+
+          document.getElementById("syncText").textContent = `Cập nhật: ${new Date().toLocaleTimeString('vi-VN')} (${fullCheckedList.length} thí sinh đã điểm danh)`;
+        }
+      } catch (err) {
+        console.warn("Lỗi kiểm tra dữ liệu:", err);
+        document.getElementById("syncText").textContent = `Đang kết nối lại: ${err.message || 'Lỗi mạng'}`;
+      }
+    }
+
+    function processDisplayQueue() {
+      if (displayQueue.length === 0) {
+        isShowingQueue = false;
+        return;
+      }
+
+      isShowingQueue = true;
+      const current = displayQueue.shift();
+
+      const contentBox = document.getElementById("welcomeContent");
+      const emptyBox = document.getElementById("welcomeEmpty");
+
+      emptyBox.style.display = "none";
+      contentBox.style.display = "flex";
+
+      contentBox.style.animation = "none";
+      void contentBox.offsetWidth;
+      contentBox.style.animation = "floatIn 0.5s ease-out forwards";
+
+      document.getElementById("viewName").textContent = current.name || "--";
+      document.getElementById("viewTeam").textContent = current.team || "--";
+      document.getElementById("viewSeat").textContent = current.seat || "--";
+
+      setTimeout(() => {
+        processDisplayQueue();
+      }, 5000);
+    }
+
+    function renderRightTable() {
+      const tbody = document.getElementById("checkedTableBody");
+      tbody.innerHTML = "";
+
+      fullCheckedList.forEach((c, index) => {
+        const tr = document.createElement("tr");
+        if (index === 0 && !isInitialLoad) tr.className = "new-row";
+
+        tr.innerHTML = `
+          <td><b style="color: #93c5fd;">${c.id}</b></td>
+          <td style="text-align: left; padding-left: 16px; font-weight: 600; color: #f8fafc;">${c.name}</td>
+          <td>${c.team}</td>
+          <td class="seat-cell">${c.seat}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      syncData();
+      setInterval(syncData, 3000);
+    });
+  </script>
+</body>
+</html>
