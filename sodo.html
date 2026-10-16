@@ -40,7 +40,6 @@
       padding: 20px 30px;
     }
 
-    /* TIÊU ĐỀ TRANG */
     .header-section {
       text-align: center;
       margin-bottom: 16px;
@@ -59,16 +58,14 @@
       filter: drop-shadow(0 4px 16px rgba(56, 189, 248, 0.25));
     }
 
-    /* BỐ CỤC CHIA ĐÔI */
     .main-board {
       flex: 1;
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 24px;
-      min-height: 0; /* Chống vỡ layout trên CSS Grid */
+      min-height: 0;
     }
 
-    /* KHUNG THẺ PANEL */
     .panel {
       background: var(--card-bg);
       backdrop-filter: blur(12px);
@@ -96,7 +93,6 @@
       color: #e2e8f0;
     }
 
-    /* BÊN TRÁI: THÍ SINH VỪA ĐIỂM DANH */
     .panel-left {
       align-items: center;
       justify-content: center;
@@ -171,7 +167,6 @@
       gap: 12px;
     }
 
-    /* BÊN PHẢI: BẢNG DANH SÁCH */
     .table-container {
       width: 100%;
       flex: 1;
@@ -230,7 +225,6 @@
       color: #fbbf24;
     }
 
-    /* TRẠNG THÁI REALTIME */
     .live-status {
       display: flex;
       justify-content: flex-end;
@@ -270,195 +264,6 @@
 
   <div class="main-board">
     
-    <!-- CỘT 1: VỪA ĐIỂM DANH -->
+    <!-- CỘT 1: THÍ SINH VỪA ĐIỂM DANH -->
     <div class="panel panel-left">
-      <div class="panel-header">
-        <h2 class="panel-title">Thí sinh vừa điểm danh</h2>
-      </div>
-
-      <div id="welcomeContent" class="welcome-card" style="display: none;">
-        <div class="welcome-group">
-          <span class="welcome-label">Họ và tên</span>
-          <div class="val-name" id="viewName">--</div>
-        </div>
-
-        <div class="welcome-group">
-          <span class="welcome-label">Đội thi</span>
-          <div class="val-team" id="viewTeam">--</div>
-        </div>
-
-        <div class="welcome-group">
-          <span class="welcome-label">Vị trí chỗ ngồi</span>
-          <div class="seat-badge-wrapper">
-            <span class="val-seat" id="viewSeat">--</span>
-          </div>
-        </div>
-      </div>
-
-      <div id="welcomeEmpty" class="empty-state">
-        <span>Đang chờ thí sinh điểm danh...</span>
-      </div>
-    </div>
-
-    <!-- CỘT 2: DANH SÁCH ĐÃ ĐIỂM DANH -->
-    <div class="panel panel-right">
-      <div class="panel-header">
-        <h2 class="panel-title">Danh sách thí sinh đã điểm danh</h2>
-      </div>
-      
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 15%;">Mã số</th>
-              <th style="width: 33%; text-align: left; padding-left: 16px;">Họ và tên</th>
-              <th style="width: 25%;">Đội thi</th>
-              <th style="width: 27%;">Vị trí chỗ ngồi</th>
-            </tr>
-          </thead>
-          <tbody id="checkedTableBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-  </div>
-
-  <div class="live-status">
-    <div class="pulse-dot"></div>
-    <span id="syncText">Đang kết nối dữ liệu...</span>
-  </div>
-
-  <script>
-    const CHECKIN_API_URL = "https://script.google.com/macros/s/AKfycbwyysUeK3wwmAqsiYKZQkE_PquC_NQBSvvjarmef_SJVgip5OYuLdAM3lMst2v9HpB5/exec";
-
-    function formatSeat(day, hang, ghe) {
-      let parts = [];
-      if (day && day !== "--") parts.push(`Dãy ${day}`);
-      if (hang && hang !== "--") parts.push(`Hàng ${hang}`);
-      if (ghe && ghe !== "--") parts.push(`Ghế ${ghe}`);
-      return parts.length > 0 ? parts.join(" ") : "--";
-    }
-
-    function fetchWithJsonp(url) {
-      return new Promise((resolve, reject) => {
-        const callbackName = 'jsonp_welcome_' + Math.round(100000 * Math.random());
-        const script = document.createElement('script');
-        script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + callbackName + '&t=' + Date.now();
-
-        const timeout = setTimeout(() => {
-          cleanup();
-          reject(new Error("Timeout"));
-        }, 5000);
-
-        window[callbackName] = function(data) {
-          clearTimeout(timeout);
-          cleanup();
-          resolve(data);
-        };
-
-        script.onerror = function() {
-          clearTimeout(timeout);
-          cleanup();
-          reject(new Error("Lỗi tải script"));
-        };
-
-        function cleanup() {
-          delete window[callbackName];
-          if (script.parentNode) script.parentNode.removeChild(script);
-        }
-
-        document.body.appendChild(script);
-      });
-    }
-
-    let knownCheckedIds = new Set();
-    let displayQueue = [];
-    let isShowingQueue = false;
-    let fullCheckedList = [];
-    let isSyncing = false;
-
-    async function syncData() {
-      if (isSyncing) return;
-      isSyncing = true;
-
-      try {
-        let rows = null;
-        try {
-          rows = await fetchWithJsonp(`${CHECKIN_API_URL}?action=getData`);
-        } catch (e) {
-          const res = await fetch(`${CHECKIN_API_URL}?action=getData&t=${Date.now()}`);
-          rows = await res.json();
-        }
-
-        if (Array.isArray(rows)) {
-          const checkedCandidates = rows.filter(r => 
-            r.status === "Đã checkin" || r.status === "Đã điểm danh" || (r.time && r.time.trim() !== "")
-          );
-
-          checkedCandidates.forEach(candidate => {
-            const id = candidate.id.toString().trim().toLowerCase();
-            if (!knownCheckedIds.has(id)) {
-              knownCheckedIds.add(id);
-
-              const formattedCandidate = {
-                id: candidate.id,
-                name: candidate.name,
-                team: candidate.team,
-                seat: formatSeat(candidate.day, candidate.hang, candidate.ghe),
-                time: candidate.time || ""
-              };
-
-              fullCheckedList.unshift(formattedCandidate);
-              displayQueue.push(formattedCandidate);
-            }
-          });
-
-          renderRightTable();
-
-          if (displayQueue.length > 0 && !isShowingQueue) {
-            processDisplayQueue();
-          }
-
-          document.getElementById("syncText").textContent = `Cập nhật: ${new Date().toLocaleTimeString('vi-VN')} (${fullCheckedList.length} thí sinh)`;
-        }
-      } catch (err) {
-        console.warn("Lỗi kiểm tra dữ liệu:", err);
-      } finally {
-        isSyncing = false;
-      }
-    }
-
-    function processDisplayQueue() {
-      if (displayQueue.length === 0) {
-        isShowingQueue = false;
-        return;
-      }
-
-      isShowingQueue = true;
-      const current = displayQueue.shift();
-
-      const contentBox = document.getElementById("welcomeContent");
-      const emptyBox = document.getElementById("welcomeEmpty");
-
-      emptyBox.style.display = "none";
-      contentBox.style.display = "flex";
-
-      contentBox.style.animation = "none";
-      void contentBox.offsetWidth;
-      contentBox.style.animation = "floatIn 0.5s ease-out forwards";
-
-      document.getElementById("viewName").textContent = current.name || "--";
-      document.getElementById("viewTeam").textContent = current.team || "--";
-      document.getElementById("viewSeat").textContent = current.seat || "--";
-
-      setTimeout(() => {
-        processDisplayQueue();
-      }, 5000);
-    }
-
-    function renderRightTable() {
-      const tbody = document.getElementById("checkedTableBody");
-      tbody.innerHTML = "";
-
-      fullCheckedList.forEach((c, index) => {
-        const tr = document.createElement
+      <div class="panel
