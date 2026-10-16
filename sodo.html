@@ -3,530 +3,433 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SƠ ĐỒ CHECK-IN REALTIME - AI-CHALLENGE HCMC2026</title>
+  <title>CHÀO MỪNG THÍ SINH - AI-CHALLENGE HCMC2026</title>
   <style>
     :root {
-      --primary: #1d4ed8;
-      --bg: #0b1329;
-      --panel-bg: #152238;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --border: #24344d;
-      
-      --color-full: #16a34a;       /* Đã đủ 100% */
-      --color-partial: #d97706;    /* Đang đến một phần */
-      --color-none: #334155;       /* Chưa ai đến */
+      --primary: #1e3a8a;
+      --accent: #2563eb;
+      --seat-color: #b45309;
+      --bg: #f8fafc;
+      --border-color: #000000;
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: "Times New Roman", Times, serif, -apple-system, sans-serif;
     }
 
     body {
       background-color: var(--bg);
-      color: var(--text);
-      padding: 14px;
+      color: #000;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      align-items: center;
+      padding: 24px;
     }
 
-    .container {
-      width: 100%;
-      max-width: 1400px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    header {
+    /* TIÊU ĐỀ CHÍNH */
+    .page-title {
       text-align: center;
+      font-size: 3rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    /* KHUNG BỐ CỤC CHÍNH CHIA ĐÔI */
+    .main-board {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border: 2px solid var(--border-color);
+      background: #fff;
+      min-height: 75vh;
+    }
+
+    /* CỘT TRÁI: THÍ SINH VỪA ĐIỂM DANH */
+    .panel-left {
+      border-right: 2px solid var(--border-color);
+      padding: 40px 30px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 3px;
     }
 
-    h1 {
-      font-size: 1.45rem;
+    .panel-title {
+      font-size: 1.85rem;
       font-weight: 800;
-      letter-spacing: 0.5px;
-      color: #38bdf8;
       text-transform: uppercase;
+      text-align: center;
+      margin-bottom: 50px;
     }
 
-    /* BẢNG ĐIỀU KHIỂN TỔNG QUAN */
-    .summary-card {
-      background: var(--panel-bg);
-      border-radius: 12px;
-      padding: 12px 18px;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-      gap: 10px;
-      border: 1px solid var(--border);
-      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-    }
-
-    .stat-item {
+    .welcome-card {
+      width: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      border-right: 1px solid var(--border);
-    }
-
-    .stat-item:last-child {
-      border-right: none;
-    }
-
-    .stat-label {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    .stat-val {
-      font-size: 1.8rem;
-      font-weight: 800;
-      margin-top: 2px;
-    }
-
-    .val-total { color: #f8fafc; }
-    .val-checked { color: #4ade80; }
-    .val-missing { color: #f87171; }
-    .val-rate { color: #38bdf8; }
-
-    /* KHU VỰC SÂN KHẤU */
-    .stage-bar {
-      background: linear-gradient(90deg, #0284c7, #38bdf8, #0284c7);
-      color: #0b1329;
+      flex: 1;
+      gap: 30px;
       text-align: center;
-      padding: 9px;
-      border-radius: 8px;
-      font-weight: 900;
-      font-size: 1.35rem;
-      letter-spacing: 6px;
-      box-shadow: 0 0 25px rgba(56, 189, 248, 0.4);
+      animation: fadeInZoom 0.5s ease-out;
     }
 
-    /* KHUNG SƠ ĐỒ LƯỚI BÀN THI */
-    .map-wrapper {
-      overflow-x: auto;
-      background: var(--panel-bg);
-      border-radius: 12px;
-      padding: 14px;
-      border: 1px solid var(--border);
-    }
-
-    .hall-grid {
-      display: grid;
-      grid-template-columns: repeat(8, minmax(130px, 1fr));
-      gap: 9px;
-      min-width: 1080px;
-    }
-
-    .hall-col {
+    .welcome-item {
       display: flex;
       flex-direction: column;
       gap: 8px;
-    }
-
-    .col-header {
-      background: #0369a1;
-      color: #fff;
-      font-weight: 700;
-      text-align: center;
-      padding: 5px;
-      border-radius: 6px;
-      font-size: 0.9rem;
-    }
-
-    /* THẺ TỪNG BÀN THI */
-    .desk-card {
-      background: #1e293b;
-      border: 2px solid var(--border);
-      border-radius: 8px;
-      padding: 7px 9px;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      transition: all 0.3s ease;
-      position: relative;
-    }
-
-    .desk-card.status-full {
-      border-color: #22c55e;
-      background: rgba(34, 197, 94, 0.16);
-      box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
-    }
-
-    .desk-card.status-partial {
-      border-color: #f59e0b;
-      background: rgba(245, 158, 11, 0.16);
-      box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
-    }
-
-    .desk-card.status-none {
-      border-color: #334155;
-      opacity: 0.8;
-    }
-
-    .desk-card.status-na {
-      border-color: #1e293b;
-      background: #0b1329;
-      opacity: 0.3;
-      justify-content: center;
-      align-items: center;
-      min-height: 72px;
-    }
-
-    .desk-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .desk-pos {
-      font-weight: 800;
-      font-size: 0.95rem;
-      color: #f8fafc;
-    }
-
-    .desk-team {
-      font-weight: 800;
-      font-size: 1.05rem;
-      color: #38bdf8;
-    }
-
-    .desk-mid {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.76rem;
-      margin-top: 2px;
-    }
-
-    .desk-badge-count {
-      background: #111c30;
-      padding: 2px 5px;
-      border-radius: 4px;
-      font-weight: 600;
-    }
-
-    .count-checked { color: #4ade80; }
-    .count-missing { color: #f87171; }
-
-    .legend-bar {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 16px;
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      margin-top: 2px;
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .legend-box {
-      width: 14px;
-      height: 14px;
-      border-radius: 3px;
-    }
-
-    .live-status {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.8rem;
-      color: var(--text-muted);
       width: 100%;
     }
 
-    .pulse {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #22c55e;
-      margin-right: 5px;
-      box-shadow: 0 0 8px #22c55e;
-      animation: pulseAnim 1.2s infinite;
+    .welcome-label {
+      font-size: 1.3rem;
+      color: #475569;
+      font-weight: 600;
     }
 
-    @keyframes pulseAnim {
-      0% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.3; transform: scale(1.3); }
+    .val-name {
+      font-size: 2.8rem;
+      font-weight: 800;
+      color: var(--primary);
+      text-transform: uppercase;
+      line-height: 1.2;
+    }
+
+    .val-team {
+      font-size: 2.1rem;
+      font-weight: 700;
+      color: #1e293b;
+    }
+
+    .val-seat {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--seat-color);
+      background: #fef3c7;
+      padding: 10px 24px;
+      border-radius: 12px;
+      border: 2px solid #fde68a;
+      display: inline-block;
+    }
+
+    .empty-state {
+      font-size: 1.5rem;
+      color: #94a3b8;
+      font-style: italic;
+      margin-top: 100px;
+    }
+
+    /* CỘT PHẢI: BẢNG DANH SÁCH ĐÃ ĐIỂM DANH */
+    .panel-right {
+      padding: 40px 30px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .table-container {
+      width: 100%;
+      flex: 1;
+      overflow-y: auto;
+      max-height: 68vh;
+      border: 1px solid var(--border-color);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: center;
+      font-size: 1.15rem;
+    }
+
+    th, td {
+      border: 1px solid var(--border-color);
+      padding: 12px 8px;
+    }
+
+    th {
+      background-color: #f1f5f9;
+      font-weight: 800;
+      font-size: 1.2rem;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+
+    /* Hàng mới nhất vừa check-in */
+    tr.new-row {
+      background-color: #dcfce7 !important;
+      font-weight: 700;
+      animation: highlightRow 1.5s ease-out;
+    }
+
+    .seat-cell {
+      font-weight: 700;
+      color: var(--seat-color);
+    }
+
+    @keyframes fadeInZoom {
+      0% { opacity: 0; transform: scale(0.92); }
       100% { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes highlightRow {
+      0% { background-color: #86efac; }
+      100% { background-color: #dcfce7; }
+    }
+
+    /* THANH TRẠNG THÁI REALTIME */
+    .live-indicator {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      font-size: 0.95rem;
+      color: #475569;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      background: #16a34a;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #16a34a;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.2); }
     }
   </style>
 </head>
 <body>
 
-  <div class="container">
-    <header>
-      <h1>BẢNG TIẾN ĐỘ CHECK-IN THÍ SINH THEO SƠ ĐỒ BÀN</h1>
-      <div class="live-status">
-        <span><span class="pulse"></span>Chế độ Realtime (Cập nhật mỗi 2 giây)</span>
-        <span id="lastSync">Đang kết nối Google Sheets...</span>
-      </div>
-    </header>
+  <!-- TIÊU ĐỀ TRÊN CÙNG -->
+  <div class="page-title">CHÀO MỪNG THÍ SINH</div>
 
-    <!-- Ô TỔNG QUAN TIẾN ĐỘ -->
-    <div class="summary-card">
-      <div class="stat-item">
-        <span class="stat-label">Tổng người trong hội trường</span>
-        <span class="stat-val val-total" id="sumTotal">0</span>
+  <!-- BẢNG ĐIỀU KHIỂN CHÍNH -->
+  <div class="main-board">
+    
+    <!-- CỘT 1: THÍ SINH VỪA ĐIỂM DANH -->
+    <div class="panel-left">
+      <div class="panel-title">THÍ SINH VỪA ĐIỂM DANH</div>
+
+      <div id="welcomeContent" class="welcome-card" style="display: none;">
+        <div class="welcome-item">
+          <span class="welcome-label">Họ và tên</span>
+          <div class="val-name" id="viewName">--</div>
+        </div>
+
+        <div class="welcome-item">
+          <span class="welcome-label">Đội thi</span>
+          <div class="val-team" id="viewTeam">--</div>
+        </div>
+
+        <div class="welcome-item">
+          <span class="welcome-label">Vị trí chỗ ngồi</span>
+          <div>
+            <span class="val-seat" id="viewSeat">--</span>
+          </div>
+        </div>
       </div>
-      <div class="stat-item">
-        <span class="stat-label">Đã Check-in</span>
-        <span class="stat-val val-checked" id="sumChecked">0</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Chưa Check-in</span>
-        <span class="stat-val val-missing" id="sumMissing">0</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Tỷ lệ có mặt</span>
-        <span class="stat-val val-rate" id="sumRate">0%</span>
+
+      <div id="welcomeEmpty" class="empty-state">
+        Đang chờ thí sinh điểm danh...
       </div>
     </div>
 
-    <!-- SÂN KHẤU -->
-    <div class="stage-bar">S Â N   K H Ấ U</div>
-
-    <!-- BẢN ĐỒ BÀN THI -->
-    <div class="map-wrapper">
-      <div class="hall-grid" id="hallGrid"></div>
-    </div>
-
-    <!-- CHÚ THÍCH -->
-    <div class="legend-bar">
-      <div class="legend-item">
-        <div class="legend-box" style="border: 2px solid #22c55e; background: rgba(34, 197, 94, 0.25);"></div>
-        <span>Đã đến đủ (100%)</span>
-      </div>
-      <div class="legend-item">
-        <div class="legend-box" style="border: 2px solid #f59e0b; background: rgba(245, 158, 11, 0.25);"></div>
-        <span>Đến một phần</span>
-      </div>
-      <div class="legend-item">
-        <div class="legend-box" style="border: 2px solid #334155; background: #1e293b;"></div>
-        <span>Chưa ai đến (0%)</span>
-      </div>
-      <div class="legend-item">
-        <div class="legend-box" style="background: #0b1329; border: 1px solid #1e293b;"></div>
-        <span>Bàn trống (#N/A)</span>
+    <!-- CỘT 2: DANH SÁCH ĐÃ ĐIỂM DANH -->
+    <div class="panel-right">
+      <div class="panel-title">DANH SÁCH THÍ SINH ĐÃ ĐIỂM DANH</div>
+      
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 15%;">Mã số</th>
+              <th style="width: 32%;">Họ và tên</th>
+              <th style="width: 25%;">Đội thi</th>
+              <th style="width: 28%;">Vị trí chỗ ngồi</th>
+            </tr>
+          </thead>
+          <tbody id="checkedTableBody">
+            <!-- Dữ liệu render động -->
+          </tbody>
+        </table>
       </div>
     </div>
+
+  </div>
+
+  <div class="live-indicator">
+    <div class="dot"></div>
+    <span id="syncText">Hệ thống Realtime đang kết nối...</span>
   </div>
 
   <script>
-    // LINK WEB APP REALTIME (Đọc trực tiếp từ bộ nhớ Google Sheets)
-    const REALTIME_API_URL = "https://script.google.com/macros/s/AKfycbwyysUeK3wwmAqsiYKZQkE_PquC_NQBSvvjarmef_SJVgip5OYuLdAM3lMst2v9HpB5/exec?action=getData";
+    // ---------------- LIÊN KẾT GOOGLE APPS SCRIPT ĐÃ TRIỂN KHAI ----------------
+    const CHECKIN_API_URL = "https://script.google.com/macros/s/AKfycbwyysUeK3wwmAqsiYKZQkE_PquC_NQBSvvjarmef_SJVgip5OYuLdAM3lMst2v9HpB5/exec";
 
-    // CẤU HÌNH SƠ ĐỒ CHUẨN 100% THEO ẢNH BẠN CUNG CẤP
-    const HALL_LAYOUT = {
-      "A": [
-        { pos: "A01", team: "637" }, { pos: "A02", team: "798" }, { pos: "A03", team: "224" },
-        { pos: "A04", team: "295" }, { pos: "A05", team: "080" }, { pos: "A06", team: "#N/A" },
-        { pos: "A07", team: "317" }, { pos: "A08", team: "574" }, { pos: "A09", team: "360" },
-        { pos: "A10", team: "065" }, { pos: "A11", team: "229" }
-      ],
-      "B": [
-        { pos: "B01", team: "293" }, { pos: "B02", team: "821" }, { pos: "B03", team: "119" },
-        { pos: "B04", team: "003" }, { pos: "B05", team: "347" }, { pos: "B06", team: "391" },
-        { pos: "B07", team: "261" }, { pos: "B08", team: "197" }, { pos: "B09", team: "393" },
-        { pos: "B10", team: "639" }, { pos: "B11", team: "297" }
-      ],
-      "C": [
-        { pos: "C01", team: "759" }, { pos: "C02", team: "211" }, { pos: "C03", team: "168" },
-        { pos: "C04", team: "584" }, { pos: "C05", team: "134" }, { pos: "C06", team: "282" },
-        { pos: "C07", team: "460" }, { pos: "C08", team: "586" }, { pos: "C09", team: "433" },
-        { pos: "C10", team: "303" }, { pos: "C11", team: "196" }
-      ],
-      "D": [
-        { pos: "D01", team: "344" }, { pos: "D02", team: "380" }, { pos: "D03", team: "339" },
-        { pos: "D04", team: "653" }, { pos: "D05", team: "328" }, { pos: "D06", team: "256" },
-        { pos: "D07", team: "291" }, { pos: "D08", team: "348" }, { pos: "D09", team: "138" },
-        { pos: "D10", team: "781" }, { pos: "D11", team: "301" }
-      ],
-      "E": [
-        { pos: "E01", team: "504" }, { pos: "E02", team: "609" }, { pos: "E03", team: "486" },
-        { pos: "E04", team: "032" }, { pos: "E05", team: "790" }, { pos: "E06", team: "670" },
-        { pos: "E07", team: "242" }, { pos: "E08", team: "583" }, { pos: "E09", team: "761" },
-        { pos: "E10", team: "218" }
-      ],
-      "F": [
-        { pos: "F01", team: "813" }, { pos: "F02", team: "420" }, { pos: "F03", team: "251" },
-        { pos: "F04", team: "593" }, { pos: "F05", team: "326" }, { pos: "F06", team: "343" },
-        { pos: "F07", team: "468" }, { pos: "F08", team: "594" }, { pos: "F09", team: "631" },
-        { pos: "F10", team: "101" }
-      ],
-      "G": [
-        { pos: "G01", team: "589" }, { pos: "G02", team: "226" }, { pos: "G03", team: "636" },
-        { pos: "G04", team: "528" }, { pos: "G05", team: "803" }, { pos: "G06", team: "352" },
-        { pos: "G07", team: "804" }, { pos: "G08", team: "400" }, { pos: "G09", team: "728" },
-        { pos: "G10", team: "456" }
-      ],
-      "H": [
-        { pos: "H01", team: "044" }, { pos: "H02", team: "722" }, { pos: "H03", team: "135" },
-        { pos: "H04", team: "430" }, { pos: "H05", team: "774" }, { pos: "H06", team: "#N/A" },
-        { pos: "H07", team: "664" }, { pos: "H08", team: "438" }, { pos: "H09", team: "713" },
-        { pos: "H10", team: "817" }
-      ]
-    };
-
-    // Chuẩn hóa mã số (bỏ số 0 ở đầu để khớp '044' và '44')
-    function cleanCode(str) {
-      if (!str) return "";
-      str = str.toString().trim().toLowerCase();
-      if (/^\d+$/.test(str)) {
-        return parseInt(str, 10).toString();
-      }
-      return str;
+    // Định dạng Chỗ ngồi chuẩn: Dãy ... Hàng ... Ghế ...
+    function formatSeat(day, hang, ghe) {
+      let parts = [];
+      if (day && day !== "--") parts.push(`Dãy ${day}`);
+      if (hang && hang !== "--") parts.push(`Hàng ${hang}`);
+      if (ghe && ghe !== "--") parts.push(`Ghế ${ghe}`);
+      return parts.length > 0 ? parts.join(" ") : "--";
     }
 
-    let isFetching = false;
+    // JSONP chống chặn CORS trên trình duyệt
+    function fetchWithJsonp(url) {
+      return new Promise((resolve, reject) => {
+        const callbackName = 'jsonp_welcome_' + Math.round(100000 * Math.random());
+        const script = document.createElement('script');
+        script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + callbackName + '&t=' + Date.now();
 
-    async function fetchRealtimeData() {
-      if (isFetching) return;
-      isFetching = true;
+        window[callbackName] = function(data) {
+          cleanup();
+          resolve(data);
+        };
 
+        script.onerror = function() {
+          cleanup();
+          reject(new Error("Lỗi kết nối JSONP"));
+        };
+
+        function cleanup() {
+          delete window[callbackName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+        }
+
+        document.body.appendChild(script);
+      });
+    }
+
+    // Quản lý trạng thái
+    let knownCheckedIds = new Set();
+    let displayQueue = [];      // Hàng đợi hiển thị bên trái (mỗi người 5 giây)
+    let isShowingQueue = false;
+    let isInitialLoad = true;
+    let fullCheckedList = [];   // Danh sách thí sinh đã check-in cho bảng bên phải
+
+    // 1. TẢI DỮ LIỆU TỪ SHEETS LIÊN TỤC
+    async function syncData() {
       try {
-        const url = REALTIME_API_URL + "&t=" + Date.now();
-        const response = await fetch(url);
-        const rows = await response.json();
+        let rows = null;
+        try {
+          rows = await fetchWithJsonp(`${CHECKIN_API_URL}?action=getData`);
+        } catch (e) {
+          const res = await fetch(`${CHECKIN_API_URL}?action=getData&t=${Date.now()}`);
+          rows = await res.json();
+        }
 
-        const teamStats = new Map();
-        const posStats = new Map();
+        if (Array.isArray(rows)) {
+          // Lọc ra các thí sinh đã check-in
+          const checkedCandidates = rows.filter(r => 
+            r.status === "Đã checkin" || r.status === "Đã điểm danh" || (r.time && r.time.trim() !== "")
+          );
 
-        let totalCandidates = 0;
-        let totalChecked = 0;
+          // Phát hiện thí sinh mới điểm danh
+          checkedCandidates.forEach(candidate => {
+            const id = candidate.id.toString().trim().toLowerCase();
+            if (!knownCheckedIds.has(id)) {
+              knownCheckedIds.add(id);
 
-        rows.forEach(row => {
-          const id = row.id;
-          if (!id) return;
+              const formattedCandidate = {
+                id: candidate.id,
+                name: candidate.name,
+                team: candidate.team,
+                seat: formatSeat(candidate.day, candidate.hang, candidate.ghe),
+                time: candidate.time || ""
+              };
 
-          const pos = row.pos ? row.pos.trim().toUpperCase() : "";
-          const team = row.team ? row.team.trim() : "";
-          const status = row.status ? row.status.trim() : "";
-          const isChecked = (status === "Đã checkin" || status === "Đã điểm danh" || (row.time && row.time.trim() !== ""));
+              // Đưa vào đầu danh sách bảng bên phải
+              fullCheckedList.unshift(formattedCandidate);
 
-          totalCandidates++;
-          if (isChecked) totalChecked++;
-
-          // Gom theo vị trí bàn (A01, B02...)
-          if (pos) {
-            if (!posStats.has(pos)) posStats.set(pos, { total: 0, checked: 0 });
-            const p = posStats.get(pos);
-            p.total++;
-            if (isChecked) p.checked++;
-          }
-
-          // Gom theo mã đội (044, 637...)
-          if (team) {
-            const cTeam = cleanCode(team);
-            if (!teamStats.has(cTeam)) teamStats.set(cTeam, { total: 0, checked: 0 });
-            const t = teamStats.get(cTeam);
-            t.total++;
-            if (isChecked) t.checked++;
-          }
-        });
-
-        // CẬP NHẬT 4 Ô TỔNG QUAN
-        const totalMissing = totalCandidates - totalChecked;
-        const rate = totalCandidates > 0 ? Math.round((totalChecked / totalCandidates) * 100) : 0;
-
-        document.getElementById("sumTotal").textContent = totalCandidates;
-        document.getElementById("sumChecked").textContent = totalChecked;
-        document.getElementById("sumMissing").textContent = totalMissing;
-        document.getElementById("sumRate").textContent = rate + "%";
-
-        const now = new Date();
-        document.getElementById("lastSync").textContent = "Cập nhật lúc: " + now.toLocaleTimeString('vi-VN');
-
-        // CẬP NHẬT SƠ ĐỒ LƯỚI
-        renderHallMap(posStats, teamStats);
-
-      } catch (err) {
-        console.error("Lỗi cập nhật:", err);
-      } finally {
-        isFetching = false;
-      }
-    }
-
-    function renderHallMap(posStats, teamStats) {
-      const hallContainer = document.getElementById("hallGrid");
-      hallContainer.innerHTML = "";
-
-      for (const colKey of Object.keys(HALL_LAYOUT)) {
-        const colDiv = document.createElement("div");
-        colDiv.className = "hall-col";
-
-        const colHeader = document.createElement("div");
-        colHeader.className = "col-header";
-        colHeader.textContent = `DÃY ${colKey}`;
-        colDiv.appendChild(colHeader);
-
-        HALL_LAYOUT[colKey].forEach(desk => {
-          const deskCard = document.createElement("div");
-
-          if (desk.team === "#N/A") {
-            deskCard.className = "desk-card status-na";
-            deskCard.innerHTML = `
-              <div style="font-weight:700; color:#64748b;">${desk.pos}</div>
-              <div style="font-size:0.75rem; color:#475569;">#N/A</div>
-            `;
-          } else {
-            const cTeam = cleanCode(desk.team);
-            // Khớp chính xác: thử tìm theo mã vị trí bàn trước (A01), nếu sheet chưa có thì tìm theo mã đội (637)
-            const stat = posStats.get(desk.pos) || teamStats.get(cTeam) || { total: 0, checked: 0 };
-            
-            const total = stat.total;
-            const checked = stat.checked;
-            const missing = Math.max(0, total - checked);
-
-            let statusClass = "status-none";
-            if (total > 0) {
-              if (checked === total) statusClass = "status-full";
-              else if (checked > 0) statusClass = "status-partial";
+              // Đưa vào hàng đợi chào mừng bên trái
+              displayQueue.push(formattedCandidate);
             }
+          });
 
-            deskCard.className = `desk-card ${statusClass}`;
-            deskCard.innerHTML = `
-              <div class="desk-top">
-                <span class="desk-pos">${desk.pos}</span>
-                <span class="desk-team">${desk.team}</span>
-              </div>
-              <div class="desk-mid">
-                <span class="desk-badge-count">Tổng: <b>${total}</b></span>
-                <span class="desk-badge-count">
-                  <span class="count-checked">✓${checked}</span> / <span class="count-missing">-${missing}</span>
-                </span>
-              </div>
-            `;
+          // Cập nhật bảng bên phải
+          renderRightTable();
+
+          // Kích hoạt luồng chiếu nếu hàng đợi có người
+          if (displayQueue.length > 0 && !isShowingQueue) {
+            processDisplayQueue();
           }
 
-          colDiv.appendChild(deskCard);
-        });
-
-        hallContainer.appendChild(colDiv);
+          document.getElementById("syncText").textContent = `Cập nhật: ${new Date().toLocaleTimeString('vi-VN')} (${fullCheckedList.length} thí sinh)`;
+        }
+      } catch (err) {
+        console.error("Lỗi đồng bộ:", err);
       }
     }
 
-    // Tự động kéo dữ liệu mỗi 2 giây để đảm bảo Realtime ngay khi quét
+    // 2. VÒNG LẶP HÀNG ĐỢI: HIỂN THỊ MỖI THÍ SINH TRONG 5 GIÂY
+    function processDisplayQueue() {
+      if (displayQueue.length === 0) {
+        isShowingQueue = false;
+        return;
+      }
+
+      isShowingQueue = true;
+      const current = displayQueue.shift(); // Lấy thí sinh tiếp theo
+
+      // Hiển thị thông tin lên cột trái
+      const contentBox = document.getElementById("welcomeContent");
+      const emptyBox = document.getElementById("welcomeEmpty");
+
+      emptyBox.style.display = "none";
+      contentBox.style.display = "flex";
+
+      // Kích hoạt lại animation
+      contentBox.style.animation = "none";
+      void contentBox.offsetWidth; // trigger reflow
+      contentBox.style.animation = "fadeInZoom 0.5s ease-out";
+
+      document.getElementById("viewName").textContent = current.name || "--";
+      document.getElementById("viewTeam").textContent = current.team || "--";
+      document.getElementById("viewSeat").textContent = current.seat || "--";
+
+      // Đợi đúng 5 giây trước khi chuyển người kế tiếp
+      setTimeout(() => {
+        processDisplayQueue();
+      }, 5000);
+    }
+
+    // 3. RENDER BẢNG BÊN PHẢI (NGƯỜI MỚI NHẤT TRÊN CÙNG)
+    function renderRightTable() {
+      const tbody = document.getElementById("checkedTableBody");
+      tbody.innerHTML = "";
+
+      fullCheckedList.forEach((c, index) => {
+        const tr = document.createElement("tr");
+        if (index === 0) tr.className = "new-row";
+
+        tr.innerHTML = `
+          <td><b>${c.id}</b></td>
+          <td style="text-align: left; padding-left: 14px;">${c.name}</td>
+          <td>${c.team}</td>
+          <td class="seat-cell">${c.seat}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Khởi chạy ngay và quét Realtime mỗi 2.5 giây
     window.addEventListener("DOMContentLoaded", () => {
-      fetchRealtimeData();
-      setInterval(fetchRealtimeData, 2000);
+      syncData();
+      setInterval(syncData, 2500);
     });
   </script>
 </body>
