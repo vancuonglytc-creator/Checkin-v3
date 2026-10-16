@@ -223,7 +223,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 7px 0;
+      padding: 8px 0;
       border-bottom: 1px solid #f1f5f9;
     }
 
@@ -231,15 +231,31 @@
     .data-label { color: var(--text-muted); font-size: 0.88rem; }
     .data-val { font-weight: 600; font-size: 0.95rem; text-align: right; }
 
-    .highlight-position {
-      color: #d97706;
-      font-size: 1.05rem;
-      font-weight: 700;
+    /* NỔI BẬT: SỐ DÁN VÀ DÃY - HÀNG - GHẾ */
+    .highlight-badge-dan {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+
+    .highlight-seat {
+      background: #fef3c7;
+      color: #b45309;
+      border: 1px solid #fde68a;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: 1px;
     }
 
     .highlight-teamcode {
       color: #2563eb;
-      font-size: 1.05rem;
       font-weight: 700;
     }
 
@@ -311,6 +327,7 @@
       <button class="btn-ctrl btn-reload" onclick="loadDataFromSheets()">Làm mới Sheet</button>
     </div>
 
+    <!-- KHỐI KẾT QUẢ CHECK-IN ĐÃ ĐƯỢC ĐỊNH DẠNG THEO YÊU CẦU MỚI -->
     <div id="resultCard" class="result-card">
       <div class="result-title" id="resHeader">
         <span>✓</span> Check-in thành công
@@ -318,24 +335,30 @@
       
       <div id="dataFields">
         <div class="data-row">
+          <span class="data-label">Mã số</span>
+          <span class="data-val" id="resId">--</span>
+        </div>
+        <div class="data-row">
           <span class="data-label">Team code</span>
           <span class="data-val highlight-teamcode" id="resTeamCode">--</span>
         </div>
-        <div class="data-row">
-          <span class="data-label">Đội thi</span>
-          <span class="data-val" id="resTeam">--</span>
-        </div>
+        <!-- NỔI BẬT: SỐ DÁN -->
         <div class="data-row">
           <span class="data-label">Số dán</span>
-          <span class="data-val highlight-position" id="resSoDan">--</span>
+          <span class="data-val highlight-badge-dan" id="resSoDan">--</span>
         </div>
+        <!-- NỔI BẬT: DÃY - HÀNG - GHẾ TRÊN CÙNG 1 HÀNG -->
         <div class="data-row">
-          <span class="data-label">Vị trí ghế</span>
-          <span class="data-val highlight-position" id="resViTriGhe">--</span>
+          <span class="data-label">Chỗ ngồi</span>
+          <span class="data-val highlight-seat" id="resSeatFull">--</span>
         </div>
         <div class="data-row">
           <span class="data-label">Họ và tên</span>
           <span class="data-val" id="resName">--</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Đội thi</span>
+          <span class="data-val" id="resTeam">--</span>
         </div>
         <div class="data-row">
           <span class="data-label">Bảng thi</span>
@@ -354,8 +377,7 @@
   </div>
 
   <script>
-    // ---------------- CẤU HÌNH ĐƯỜNG LINK ----------------
-    // Nếu bạn lấy được link CSV có gid riêng của sheet "Diem danh Tong ket", hãy dán vào đây:
+    // ---------------- CẤU HÌNH LIÊN KẾT ----------------
     const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4sLZHFDwhiBdhJbQUkIAbNYSsWkx-zxMg6vc4QAMgJu4qW4tsi6vS4PbFys_0Kra681QuCOAQ-RR1/pub?output=csv";
     const CHECKIN_API_URL = "https://script.google.com/macros/s/AKfycbwyysUeK3wwmAqsiYKZQkE_PquC_NQBSvvjarmef_SJVgip5OYuLdAM3lMst2v9HpB5/exec";
 
@@ -365,7 +387,7 @@
     let isStarting = false;
     let lastProcessedCode = null;
 
-    // TẢI QUA JSONP (KHÔNG BAO GIỜ BỊ CHẶN BỞI CORS TRÊN TRÌNH DUYỆT)
+    // TẢI QUA JSONP ĐỂ KHÔNG BỊ CHẶN CORS VÀ ĐỌC CHÍNH XÁC SHEET
     function fetchWithJsonp(url) {
       return new Promise((resolve, reject) => {
         const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
@@ -381,20 +403,20 @@
         script.onerror = function() {
           delete window[callbackName];
           document.body.removeChild(script);
-          reject(new Error("Lỗi tải qua JSONP"));
+          reject(new Error("Lỗi kết nối JSONP"));
         };
 
         document.body.appendChild(script);
       });
     }
 
-    // 1. TẢI TOÀN BỘ DANH SÁCH (CƠ CHẾ KÉP)
+    // 1. TẢI DỮ LIỆU ĐA TẦNG
     async function loadDataFromSheets() {
       const statusEl = document.getElementById("dbStatus");
-      statusEl.textContent = "Đang kết nối danh sách...";
+      statusEl.textContent = "Đang đồng bộ danh sách tổng kết...";
       statusEl.style.color = "#64748b";
 
-      // BƯỚC 1: Thử lấy trực tiếp từ Apps Script qua JSONP (chắc chắn lấy đúng sheet "Diem danh Tong ket")
+      // Cách 1: Ưu tiên qua Apps Script API
       if (CHECKIN_API_URL.trim()) {
         try {
           const rows = await fetchWithJsonp(`${CHECKIN_API_URL}?action=getData`);
@@ -403,11 +425,15 @@
             rows.forEach(r => {
               if (r.id) {
                 const isChecked = (r.status === "Đã checkin" || r.status === "Đã điểm danh" || (r.time && r.time.trim() !== ""));
+                
+                // Gom Dãy - Hàng - Ghế
+                const seatStr = [r.day, r.hang, r.ghe].filter(v => v && v !== "--").join(" - ") || "--";
+
                 candidateMap.set(r.id.toString().trim().toLowerCase(), {
                   id: r.id.toString().trim(),
                   teamCode: r.teamCode || '--',
                   soDan: r.soDan || '--',
-                  viTriGhe: r.viTriGhe || '--',
+                  seatFull: seatStr,
                   name: r.name || 'Chưa cập nhật',
                   team: r.team || '--',
                   field: r.field || '--',
@@ -422,11 +448,11 @@
             return;
           }
         } catch (e) {
-          console.warn("JSONP thất bại, thử sang CSV...", e);
+          console.warn("JSONP không phản hồi, thử tải qua CSV...", e);
         }
       }
 
-      // BƯỚC 2: Thử lấy qua file CSV
+      // Cách 2: Dự phòng qua link CSV
       if (SHEET_CSV_URL.trim()) {
         const urlWithBuster = SHEET_CSV_URL + (SHEET_CSV_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
         Papa.parse(urlWithBuster, {
@@ -436,7 +462,6 @@
           complete: function(results) {
             candidateMap.clear();
             results.data.forEach(row => {
-              // Tìm trường ID/Mã số bất kỳ
               const idKey = Object.keys(row).find(k => ['mã số', 'id', 'maso', 'ma so'].includes(k.trim().toLowerCase()));
               const id = idKey ? row[idKey].trim() : '';
 
@@ -446,6 +471,11 @@
                   return key ? row[key].trim() : '';
                 };
 
+                const day = getVal(['dãy', 'day']);
+                const hang = getVal(['hàng', 'hang']);
+                const ghe = getVal(['ghế', 'ghe']);
+                const seatStr = [day, hang, ghe].filter(v => v && v !== "--").join(" - ") || "--";
+
                 const status = getVal(['trạng thái', 'trangthai']);
                 const time = getVal(['thời gian checkin', 'thời gian', 'thoigian']);
 
@@ -453,7 +483,7 @@
                   id: id,
                   teamCode: getVal(['team code', 'teamcode']) || '--',
                   soDan: getVal(['số dán', 'sodan']) || '--',
-                  viTriGhe: getVal(['vị trí ghế', 'vitrighe', 'vị trí']) || '--',
+                  seatFull: seatStr,
                   name: getVal(['họ và tên', 'hoten']) || 'Chưa cập nhật',
                   team: getVal(['đội thi', 'doithi']) || '--',
                   field: getVal(['bảng thi', 'bangthi']) || '--',
@@ -467,19 +497,19 @@
               statusEl.textContent = `Đã đồng bộ ${candidateMap.size} thí sinh (CSV)`;
               statusEl.style.color = "#16a34a";
             } else {
-              statusEl.textContent = "Lỗi: Không đọc được dữ liệu cột của Sheet!";
+              statusEl.textContent = "Lỗi: Không tìm thấy cột Mã số trong Sheet!";
               statusEl.style.color = "#dc2626";
             }
           },
           error: function() {
-            statusEl.textContent = "Lỗi kết nối tải Google Sheet!";
+            statusEl.textContent = "Lỗi tải Google Sheet!";
             statusEl.style.color = "#dc2626";
           }
         });
       }
     }
 
-    // 2. GỬI CHECK-IN (DÙNG JSONP TRÁNH MẤT KẾT NỐI)
+    // 2. GỬI CHECK-IN LÊN GOOGLE SHEETS
     async function sendCheckinToGoogleSheet(candidate) {
       const card = document.getElementById("resultCard");
       const header = document.getElementById("resHeader");
@@ -492,6 +522,7 @@
         return;
       }
 
+      // Thông báo trạng thái đang lưu
       card.className = "result-card active pending";
       header.innerHTML = "<span>⏳</span> Đang lưu lịch sử checkin vào hệ thống!";
       statusSpan.innerHTML = `<span class="badge-status warning">Đang ghi nhận...</span>`;
@@ -566,11 +597,12 @@
       const found = candidateMap.get(code.toLowerCase());
 
       if (found) {
+        document.getElementById("resId").textContent = found.id;
         document.getElementById("resTeamCode").textContent = found.teamCode;
-        document.getElementById("resTeam").textContent = found.team;
         document.getElementById("resSoDan").textContent = found.soDan;
-        document.getElementById("resViTriGhe").textContent = found.viTriGhe;
+        document.getElementById("resSeatFull").textContent = found.seatFull; // Hiển thị Dãy - Hàng - Ghế
         document.getElementById("resName").textContent = found.name;
+        document.getElementById("resTeam").textContent = found.team;
         document.getElementById("resField").textContent = found.field;
         document.getElementById("dataFields").style.display = "block";
 
@@ -578,11 +610,12 @@
       } else {
         card.className = "result-card active not-found";
         header.innerHTML = "<span>✕</span> Không tìm thấy thí sinh!";
+        document.getElementById("resId").textContent = "--";
         document.getElementById("resTeamCode").textContent = "--";
-        document.getElementById("resTeam").textContent = "--";
         document.getElementById("resSoDan").textContent = "--";
-        document.getElementById("resViTriGhe").textContent = "--";
+        document.getElementById("resSeatFull").textContent = "--";
         document.getElementById("resName").textContent = "Không có trong danh sách";
+        document.getElementById("resTeam").textContent = "--";
         document.getElementById("resField").textContent = "--";
         document.getElementById("resStatus").innerHTML = `<span style="color:red;">Không thể check-in</span>`;
       }
