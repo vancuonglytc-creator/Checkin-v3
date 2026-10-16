@@ -4,9 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CỔNG CHECK-IN THÍ SINH AI-CHALLENGE HCMC2026</title>
-  <!-- Thư viện quét đa định dạng (Barcode 1D & QR Code) -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <!-- Thư viện đọc CSV Google Sheets -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
     :root {
@@ -66,7 +64,6 @@
       font-weight: 600;
     }
 
-    /* Khung nhập tay & súng bắn mã vạch */
     .manual-gun-box {
       background: var(--card-bg);
       padding: 12px;
@@ -130,5 +127,280 @@
       background: var(--primary-hover);
     }
 
-    /* Khung camera */
-    .scanner-
+    .scanner-box {
+      background: var(--card-bg);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      position: relative;
+    }
+
+    #reader {
+      width: 100%;
+      border: none !important;
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    button.btn-ctrl {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: opacity 0.2s;
+    }
+
+    .btn-start { background-color: var(--primary); color: #fff; }
+    .btn-stop { background-color: #ef4444; color: #fff; }
+    .btn-reload { background-color: #475569; color: #fff; flex: 0.8; }
+
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .result-card {
+      background: var(--card-bg);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      display: none;
+      border-left: 6px solid var(--success);
+      transition: all 0.2s ease;
+    }
+
+    .result-card.active {
+      display: block;
+      animation: fadeIn 0.25s ease;
+    }
+
+    .result-card.pending {
+      border-left-color: var(--warning);
+      background-color: #fffdf5;
+    }
+
+    .result-card.not-found { border-left-color: var(--error); }
+    .result-card.already-checked { 
+      border-left-color: var(--error);
+      background-color: #fff5f5;
+    }
+
+    .result-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: var(--success);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .result-card.pending .result-title { color: var(--warning); }
+    .result-card.not-found .result-title { color: var(--error); }
+    .result-card.already-checked .result-title { 
+      color: var(--error); 
+      font-size: 1.1rem;
+    }
+
+    .data-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .data-row:last-child { border-bottom: none; }
+    .data-label { color: var(--text-muted); font-size: 0.88rem; }
+    .data-val { font-weight: 600; font-size: 0.95rem; text-align: right; }
+
+    .highlight-badge-dan {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+
+    .highlight-seat {
+      background: #fef3c7;
+      color: #b45309;
+      border: 1px solid #fde68a;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+
+    .highlight-teamcode {
+      color: #2563eb;
+      font-weight: 700;
+    }
+
+    .badge-status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      background: #dcfce7;
+      color: #15803d;
+    }
+
+    .badge-status.warning {
+      background: #fef3c7;
+      color: #b45309;
+    }
+
+    .badge-status.danger {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    .raw-data {
+      margin-top: 8px;
+      font-size: 0.75rem;
+      color: #94a3b8;
+      word-break: break-all;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>CỔNG CHECK-IN THÍ SINH AI-CHALLENGE HCMC2026</h1>
+      <p class="sync-status" id="dbStatus">Đang tải danh sách thí sinh...</p>
+    </header>
+
+    <div class="manual-gun-box">
+      <div class="box-title">
+        <span>⌨️ Nhập mã tay / 🔫 Súng quét USB</span>
+        <span class="badge-guide">Tự động nhận diện</span>
+      </div>
+      <form class="input-row" onsubmit="handleManualSubmit(event)">
+        <input 
+          type="text" 
+          id="manualCodeInput" 
+          placeholder="Nhập mã số hoặc bấm súng quét..." 
+          autocomplete="off" 
+          autofocus 
+        />
+        <button type="submit" class="btn-submit">Kiểm tra</button>
+      </form>
+    </div>
+
+    <div class="scanner-box">
+      <div id="reader"></div>
+    </div>
+
+    <div class="controls">
+      <button id="btnStart" class="btn-ctrl btn-start" onclick="startScanner()">Bật Camera / Webcam</button>
+      <button id="btnStop" class="btn-ctrl btn-stop" onclick="stopScanner()" disabled>Tắt</button>
+      <button class="btn-ctrl btn-reload" onclick="loadDataFromSheets()">Làm mới Sheet</button>
+    </div>
+
+    <div id="resultCard" class="result-card">
+      <div class="result-title" id="resHeader">
+        <span>✓</span> Check-in thành công
+      </div>
+      
+      <div id="dataFields">
+        <div class="data-row">
+          <span class="data-label">Mã số</span>
+          <span class="data-val" id="resId">--</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Team code</span>
+          <span class="data-val highlight-teamcode" id="resTeamCode">--</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Số dán</span>
+          <span class="data-val highlight-badge-dan" id="resSoDan">--</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Chỗ ngồi</span>
+          <span class="data-val highlight-seat" id="resSeatFull">--</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Họ và tên</span>
+          <span class="data-val" id="resName">--</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Đội thi</span>
+          <span class="data-val" id="resTeam">--</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Bảng thi</span>
+          <span class="data-val" id="resField">--</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">Trạng thái</span>
+          <span class="data-val" id="resStatus">
+            <span class="badge-status">Đang kiểm tra...</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="raw-data" id="resRaw"></div>
+    </div>
+  </div>
+
+  <script>
+    const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4sLZHFDwhiBdhJbQUkIAbNYSsWkx-zxMg6vc4QAMgJu4qW4tsi6vS4PbFys_0Kra681QuCOAQ-RR1/pub?output=csv";
+    const CHECKIN_API_URL = "https://script.google.com/macros/s/AKfycbwyysUeK3wwmAqsiYKZQkE_PquC_NQBSvvjarmef_SJVgip5OYuLdAM3lMst2v9HpB5/exec";
+
+    let candidateMap = new Map();
+    let html5QrCode = null;
+    let isScanning = false;
+    let isStarting = false;
+    let lastProcessedCode = null;
+
+    function formatSeatString(day, hang, ghe) {
+      let parts = [];
+      if (day && day !== "--") parts.push(`Dãy ${day}`);
+      if (hang && hang !== "--") parts.push(`Hàng ${hang}`);
+      if (ghe && ghe !== "--") parts.push(`Ghế ${ghe}`);
+      return parts.length > 0 ? parts.join(" ") : "--";
+    }
+
+    function fetchWithJsonp(url) {
+      return new Promise((resolve, reject) => {
+        const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
+        const script = document.createElement('script');
+        script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + callbackName + '&t=' + Date.now();
+
+        window[callbackName] = function(data) {
+          delete window[callbackName];
+          document.body.removeChild(script);
+          resolve(data);
+        };
+
+        script.onerror = function() {
+          delete window[callbackName];
+          document.body.removeChild(script);
+          reject(new Error("Lỗi kết nối JSONP"));
+        };
+
+        document.body.appendChild(script);
+      });
+    }
+
+    async function loadDataFromSheets() {
+      const statusEl = document.getElementById("dbStatus");
+      statusEl.textContent = "Đang đồng bộ danh sách tổng kết...";
+      statusEl.style.color = "#64748b";
+
+      if (CHECKIN
